@@ -123,9 +123,9 @@ export function VideoCard({
 
   // List view
   return (
-    <div className="flex w-full items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-4 sm:flex-row">
       <div
-        className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted cursor-pointer"
+        className="relative h-16 w-24 flex-shrink-0 cursor-pointer overflow-hidden rounded-md bg-muted"
         onClick={onClick}
       >
         {video.videoUrl ? (
@@ -154,12 +154,12 @@ export function VideoCard({
           </Badge>
         </div>
         <p
-          className="line-clamp-2 w-full text-sm font-medium cursor-pointer"
+          className="line-clamp-2 w-full cursor-pointer text-sm font-medium"
           onClick={onClick}
         >
           {video.prompt}
         </p>
-        <div className="truncate text-xs text-muted-foreground capitalize">
+        <div className="truncate text-xs capitalize text-muted-foreground">
           {video.provider} • {video.modelId}
           {video.duration && ` • ${video.duration}s`}
           {video.resolution && ` • ${video.resolution}`}

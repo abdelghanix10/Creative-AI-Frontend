@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check user credits before processing
+    // Check user credits as a safety measure
     const user = await db.user.findUnique({
       where: { id: session.user.id },
       select: { credits: true },

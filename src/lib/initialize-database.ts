@@ -11,7 +11,7 @@ export async function initializeDatabase() {
     console.log(`Found ${planCount} subscription plans in database`);
 
     // If less than 3 plans, run the seed
-    if (planCount < 3) {
+    if (planCount == 0) {
       console.log("Running database seed...");
 
       // Create subscription plans
@@ -47,7 +47,7 @@ export async function initializeDatabase() {
           price: 9.99,
           yearlyPrice: 95.9,
           features: JSON.stringify([
-            "2,500 credits/month",
+            "9000 credits/month",
             "AI text, image & voice generation",
             "5GB cloud storage",
             "Standard AI models",
@@ -70,7 +70,7 @@ export async function initializeDatabase() {
           price: 19.99,
           yearlyPrice: 191.9,
           features: JSON.stringify([
-            "5,000 credits/month",
+            "25000 credits/month",
             "Advanced AI models",
             "25GB cloud storage",
             "Priority email support",

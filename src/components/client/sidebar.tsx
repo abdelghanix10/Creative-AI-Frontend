@@ -29,10 +29,12 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   const isExpanded = isMobile || isPinned || isHovered;
 
-  const session = useSession();
+  const session = useSession({
+    required: false,
+    refetchInterval: 0,
+    refetchOnWindowFocus: false,
+  });
   const user = session.data?.user;
-
-  console.log("Sidebar user:", user);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -53,34 +55,38 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
   return (
     <div
-      className={`${isExpanded ? "w-64" : "w-16"} flex h-full flex-col border-r border-gray-200 bg-white px-3 py-4 transition-all duration-300`}
+      className={`${isExpanded ? "w-64" : "w-16"} flex h-full flex-col border-r border-border bg-background px-3 py-4 transition-all duration-300`}
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}
     >
-      <div className="flex items-center justify-between rounded-lg bg-slate-300 p-2">
+      <div className="flex items-center justify-between rounded-lg bg-muted p-2">
         <div className={`flex gap-2 ${!isExpanded && "hidden"}`}>
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-black text-white">
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Sparkles className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">Craetive AI</span>
-            <span className="truncate text-xs">{user?.subscriptionTier}</span>
+            <span className="truncate font-semibold text-foreground">
+              Craetive AI
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              {user?.subscriptionTier}
+            </span>
           </div>
         </div>
         {!isMobile && (
           <button
             onClick={() => setIsPinned(!isPinned)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-gray-100"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:bg-muted"
             title={isPinned ? "Unpin sidebar" : "Pin sidebar"}
           >
             <div
-              className={`flex h-8 w-8 items-center justify-center transition-all ${isPinned ? "rounded-lg bg-gray-200" : "text-gray-500"}`}
+              className={`flex h-8 w-8 items-center justify-center transition-all ${isPinned ? "rounded-lg bg-muted-foreground/10" : "text-muted-foreground"}`}
             >
               {isExpanded ? (
                 <IoPinOutline className="h-5 w-5" />
               ) : (
-                <div className="flex h-fit w-fit items-center justify-center rounded-lg bg-white px-2 py-2">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-black text-white">
+                <div className="flex h-fit w-fit items-center justify-center rounded-lg bg-background px-2 py-2">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <Sparkles className="size-4" />
                   </div>
                 </div>
@@ -195,7 +201,7 @@ function SectionHeader({
   return (
     <div className="mb-2 mt-4 h-6 pl-4">
       <span
-        className={`text-sm text-gray-500 transition-opacity duration-200 ${isExpanded ? "opacity-100" : "opacity-0"}`}
+        className={`text-sm text-muted-foreground transition-opacity duration-200 ${isExpanded ? "opacity-100" : "opacity-0"}`}
       >
         {children}
       </span>
@@ -219,7 +225,7 @@ function SidebarButton({
   return (
     <Link
       href={href}
-      className={`flex w-full items-center rounded-lg px-2.5 py-2 text-sm transition-colors ${isActive ? "bg-gray-100 font-medium" : "text-gray-600 hover:bg-gray-50"}`}
+      className={`flex w-full items-center rounded-lg px-2.5 py-2 text-sm transition-colors ${isActive ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
     >
       <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
         {icon}

@@ -78,14 +78,14 @@ export async function POST(req: NextRequest) {
       select: { credits: true },
     });
 
-    if (!dbUser || dbUser.credits < 100) {
-          return NextResponse.json(
-            {
-              error: "Insufficient credits. Video generation requires 100 credits.",
-            },
-            { status: 402 },
-          );
-        }
+    if (!dbUser || dbUser.credits < 45) {
+      return NextResponse.json(
+        {
+          error: "Insufficient credits. Image generation requires 45 credits.",
+        },
+        { status: 402 },
+      );
+    }
 
     const config = providerConfig[provider];
     const startstamp = performance.now();

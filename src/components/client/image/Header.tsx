@@ -30,12 +30,12 @@ const SparklesIcon = ({ size = 18 }) => {
 export const Header = () => {
   return (
     <header className="mb-4">
-      <div className="mx-auto flex justify-between items-center">
+      <div className="mx-auto flex items-center justify-between">
         <div>
-          <h1 className="text-xl flex sm:text-2xl sm:font-bold antialiased font-semibold">
+          <h1 className="flex text-xl font-semibold text-foreground antialiased sm:text-2xl sm:font-bold">
             <Link
               href="https://sdk.vercel.ai"
-              className="flex items-center mr-2 hover:opacity-75"
+              className="mr-2 flex items-center text-foreground hover:opacity-75"
               target="_blank"
             >
               <SparklesIcon />

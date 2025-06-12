@@ -10,7 +10,7 @@ import {
   X,
   Settings,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { useAutoResizeTextarea } from "~/hooks/use-auto-resize-textarea";
@@ -133,6 +133,24 @@ export default function AI_Prompt({
       ),
     },
   ];
+  const getCurrentModel = () => {
+    return (
+      VIDEO_MODELS.find((m) => m.name === selectedModel) ?? VIDEO_MODELS[0]!
+    );
+  }; // Initialize the model and endpoint when component mounts
+  useEffect(() => {
+    if (onModelChange) {
+      const currentModel =
+        VIDEO_MODELS.find((m) => m.name === selectedModel) ?? VIDEO_MODELS[0]!;
+      const endpoint =
+        videoMode === "text-to-video"
+          ? currentModel.textToVideoEndpoint
+          : currentModel.imageToVideoEndpoint;
+      onModelChange(currentModel.name, endpoint);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onModelChange, videoMode, selectedModel]); // VIDEO_MODELS is constant
+
   const handleModelSelect = (model: {
     name: string;
     textToVideoEndpoint: string;
@@ -187,12 +205,6 @@ export default function AI_Prompt({
     }
   };
 
-  const getCurrentModel = () => {
-    return (
-      VIDEO_MODELS.find((m) => m.name === selectedModel) ?? VIDEO_MODELS[0]!
-    );
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -222,13 +234,13 @@ export default function AI_Prompt({
   };
 
   return (
-    <div className="w-4/6 py-4">
+    <div className="w-full md:w-4/6 py-4">
       <div className="rounded-2xl bg-black/5 p-1.5 dark:bg-white/5">
         <div className="relative">
           <div className="relative flex flex-col">
             {/* Image Preview */}
             {imagePreview && videoMode === "image-to-video" && (
-              <div className="w-32 relative mb-2 rounded-lg border border-black/10 dark:border-white/10">
+              <div className="relative mb-2 w-32 rounded-lg border border-black/10 dark:border-white/10">
                 <div className="relative h-32 w-32 overflow-hidden rounded-lg">
                   <Image
                     src={imagePreview}

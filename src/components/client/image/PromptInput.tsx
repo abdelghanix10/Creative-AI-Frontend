@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowUpRight, ArrowUp, RefreshCw } from "lucide-react";
-import { getRandomSuggestions, Suggestion } from "~/lib/suggestions";
+import { getRandomSuggestions, type Suggestion } from "~/lib/suggestions";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
@@ -53,15 +53,14 @@ export function PromptInput({
     }
   };
 
-
   const [aspectRatio, setAspectRatio] = useState<string>("1:1");
   const handleAspectRatioChange = (newRatio: string) => {
     setAspectRatio(newRatio);
   };
 
   return (
-    <div className="w-full mb-8">
-      <div className="bg-zinc-50 rounded-xl p-4">
+    <div className="mb-8 w-full">
+      <div className="rounded-xl bg-muted p-4">
         <div className="flex flex-col gap-3">
           <Textarea
             value={input}
@@ -69,53 +68,53 @@ export function PromptInput({
             onKeyDown={handleKeyDown}
             placeholder="Enter your prompt here"
             rows={3}
-            className="text-base bg-transparent border-none p-0 resize-none placeholder:text-zinc-500 text-[#111111] focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="resize-none border-none bg-transparent p-0 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           <div className="flex items-end justify-between pt-1">
             <div className="flex flex-col justify-between gap-2">
               <div className="flex items-center justify-between space-x-2">
                 <button
                   onClick={updateSuggestions}
-                  className="flex items-center justify-between px-2 rounded-lg py-1 bg-background text-sm hover:opacity-70 group transition-opacity duration-200"
+                  className="group flex items-center justify-between rounded-lg bg-background px-2 py-1 text-sm transition-colors duration-200 hover:bg-muted"
                 >
-                  <RefreshCw className="w-4 h-4 text-zinc-500 group-hover:opacity-70" />
+                  <RefreshCw className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
                 </button>
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     onClick={() => handleSuggestionSelect(suggestion.prompt)}
                     className={cn(
-                      "flex items-center justify-between px-2 rounded-lg py-1 bg-background text-sm hover:opacity-70 group transition-opacity duration-200",
+                      "group flex items-center justify-between rounded-lg bg-background px-2 py-1 text-sm transition-colors duration-200 hover:bg-muted",
                       index > 2
                         ? "hidden md:flex"
                         : index > 1
-                        ? "hidden sm:flex"
-                        : ""
+                          ? "hidden sm:flex"
+                          : "",
                     )}
                   >
                     <span>
-                      <span className="text-black text-xs sm:text-sm">
+                      <span className="text-xs text-foreground sm:text-sm">
                         {suggestion.text.toLowerCase()}
                       </span>
                     </span>
-                    <ArrowUpRight className="ml-1 h-2 w-2 sm:h-3 sm:w-3 text-zinc-500 group-hover:opacity-70" />
+                    <ArrowUpRight className="ml-1 h-2 w-2 text-muted-foreground group-hover:text-foreground sm:h-3 sm:w-3" />
                   </button>
                 ))}
               </div>
-                <AspectRatioToggle
-                  onValueChange={handleAspectRatioChange}
-                  disabled={isLoading}
-                />
+              <AspectRatioToggle
+                onValueChange={handleAspectRatioChange}
+                disabled={isLoading}
+              />
             </div>
             <button
               onClick={handleSubmit}
-              disabled={isLoading || !input.trim()}
-              className="h-8 w-8 rounded-full bg-black flex items-center justify-center disabled:opacity-50"
+              disabled={isLoading ?? !input.trim()}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {isLoading ? (
-                <Spinner className="w-3 h-3 text-white" />
+                <Spinner className="h-3 w-3" />
               ) : (
-                <ArrowUp className="w-5 h-5 text-white" />
+                <ArrowUp className="h-5 w-5" />
               )}
             </button>
           </div>

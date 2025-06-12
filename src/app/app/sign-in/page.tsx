@@ -65,24 +65,26 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-screen w-full">
       <div className="relative w-full lg:w-1/2">
-        <div className="top-6 flex absolute left-8 items-center gap-2 font-bold">
+        <div className="absolute left-8 top-6 flex items-center gap-2 font-bold">
           <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-black text-white dark:bg-white dark:text-black">
             <Sparkles className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold">Craetive AI</span>
+            <span className="truncate font-semibold text-foreground">
+              Craetive AI
+            </span>
           </div>
         </div>
 
         {/* Centered sign up form */}
         <div className="flex min-h-screen items-center justify-center">
           <div className="w-full max-w-md p-8">
-            <h2 className="mb-6 text-center text-2xl font-semibold">
+            <h2 className="mb-6 text-center text-2xl font-semibold text-foreground">
               Log in to your account
             </h2>
 
             {error && (
-              <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-500">
+              <div className="mb-4 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -91,7 +93,7 @@ export default function SignInPage() {
               <div className="mb-4">
                 <label
                   htmlFor="emailOrUsername"
-                  className="mb-1 block text-sm font-medium text-black"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Email or Username
                 </label>
@@ -101,10 +103,10 @@ export default function SignInPage() {
                   {...register("emailOrUsername")}
                   placeholder="Enter your email or username"
                   required
-                  className="w-full rounded-lg border border-gray-200 p-2 placeholder:text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="w-full rounded-lg border border-border bg-background p-2 text-foreground placeholder:text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 {errors.emailOrUsername && (
-                  <p className="mt-1 text-xs text-red-500">
+                  <p className="mt-1 text-xs text-destructive">
                     {errors.emailOrUsername.message}
                   </p>
                 )}
@@ -113,7 +115,7 @@ export default function SignInPage() {
               <div className="mb-4">
                 <label
                   htmlFor="password"
-                  className="mb-1 block text-sm font-medium text-black"
+                  className="mb-1 block text-sm font-medium text-foreground"
                 >
                   Password
                 </label>
@@ -123,10 +125,10 @@ export default function SignInPage() {
                   {...register("password")}
                   placeholder="Enter your password"
                   required
-                  className="w-full rounded-lg border border-gray-200 p-2 placeholder:text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                  className="w-full rounded-lg border border-border bg-background p-2 text-foreground placeholder:text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 {errors.password && (
-                  <p className="mt-1 text-xs text-red-500">
+                  <p className="mt-1 text-xs text-destructive">
                     {errors.password.message}
                   </p>
                 )}
@@ -135,12 +137,12 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={isLoading || !isFormValid}
-                className={`my-4 w-full rounded-full py-2.5 text-sm text-white transition-colors ${isLoading ? "cursor-not-allowed bg-gray-400" : isFormValid ? "bg-black" : "cursor-not-allowed bg-gray-400"}`}
+                className={`my-4 w-full rounded-full py-2.5 text-sm transition-colors ${isLoading ? "cursor-not-allowed bg-muted text-muted-foreground" : isFormValid ? "bg-primary text-primary-foreground hover:bg-primary/90" : "cursor-not-allowed bg-muted text-muted-foreground"}`}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">
                     <svg
-                      className="mr-2 h-4 w-4 animate-spin text-white"
+                      className="mr-2 h-4 w-4 animate-spin"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -167,10 +169,10 @@ export default function SignInPage() {
               </button>
 
               <div className="text-center">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Don&apos;t have an account?{" "}
                   <a
-                    className="font-medium text-black underline"
+                    className="font-medium text-primary underline hover:text-primary/80"
                     href="/app/sign-up"
                   >
                     Sign up

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { ImageError, ImageResult, ProviderTiming } from "~/lib/image-types";
 import { initializeProviderRecord, ProviderKey } from "~/lib/provider-config";
 
@@ -77,7 +78,7 @@ export function useImageGeneration(): UseImageGenerationReturn {
             prompt,
             provider,
             modelId,
-            aspectRatio: provider === 'fireworks2' ? aspectRatio : undefined, // Only send for fireworks2
+            aspectRatio: provider === "fireworks2" ? aspectRatio : undefined, // Only send for fireworks2
           };
 
           const response = await fetch("/api/generate-images", {
@@ -87,6 +88,12 @@ export function useImageGeneration(): UseImageGenerationReturn {
           });
           const data = await response.json();
           if (!response.ok) {
+            // Handle insufficient credits error specifically
+            if (response.status === 402) {
+              toast.error(
+                "Insufficient credits. Image generation requires 45 credits.",
+              );
+            }
             throw new Error(data.error || `Server error: ${response.status}`);
           }
 

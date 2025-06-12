@@ -11,8 +11,7 @@ import {
   Pause,
   Download,
   Image as ImageIcon,
-  Mic,
-  Volume2,
+  Music,
   Loader2,
   Search,
   Grid3X3,
@@ -38,24 +37,12 @@ interface ExploreImage {
   };
 }
 
-interface ExploreAudioClip {
+interface ExploreSoundEffect {
   id: string;
   text: string | null;
   voice: string | null;
   s3Key: string | null;
   service: string;
-  createdAt: Date;
-  user: {
-    name: string | null;
-    email: string;
-  };
-}
-
-interface ExploreVoice {
-  id: string;
-  name: string;
-  service: string;
-  s3Key: string | null;
   createdAt: Date;
   user: {
     name: string | null;
@@ -83,19 +70,17 @@ interface ExploreVideo {
 
 interface ExploreGalleryProps {
   images: ExploreImage[];
-  audioClips: ExploreAudioClip[];
-  voices: ExploreVoice[];
+  soundEffects: ExploreSoundEffect[];
   videos: ExploreVideo[];
 }
 
 export default function ExploreGallery({
   images,
-  audioClips,
-  voices,
+  soundEffects,
   videos,
 }: ExploreGalleryProps) {
   const [activeTab, setActiveTab] = useState<
-    "all" | "images" | "audio" | "voices" | "videos"
+    "all" | "images" | "soundEffects" | "videos"
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -336,29 +321,25 @@ export default function ExploreGallery({
   };
   type AllItemTypes =
     | (ExploreImage & { type: "image" })
-    | (ExploreAudioClip & { type: "audio" })
-    | (ExploreVoice & { type: "voice" })
+    | (ExploreSoundEffect & { type: "soundEffect" })
     | (ExploreVideo & { type: "video" });
 
   const allItems: AllItemTypes[] = [
     ...images.map((item) => ({ ...item, type: "image" as const })),
-    ...audioClips.map((item) => ({ ...item, type: "audio" as const })),
-    ...voices.map((item) => ({ ...item, type: "voice" as const })),
+    ...soundEffects.map((item) => ({ ...item, type: "soundEffect" as const })),
     ...videos.map((item) => ({ ...item, type: "video" as const })),
   ];
   const getFilteredAndSortedItems = (): AllItemTypes[] => {
-    let items: AllItemTypes[] = allItems;
-
-    // Filter by tab
+    let items: AllItemTypes[] = allItems; // Filter by tab
     switch (activeTab) {
       case "images":
         items = images.map((item) => ({ ...item, type: "image" as const }));
         break;
-      case "audio":
-        items = audioClips.map((item) => ({ ...item, type: "audio" as const }));
-        break;
-      case "voices":
-        items = voices.map((item) => ({ ...item, type: "voice" as const }));
+      case "soundEffects":
+        items = soundEffects.map((item) => ({
+          ...item,
+          type: "soundEffect" as const,
+        }));
         break;
       case "videos":
         items = videos.map((item) => ({ ...item, type: "video" as const }));
@@ -374,11 +355,8 @@ export default function ExploreGallery({
         if (item.type === "image") {
           return item.prompt.toLowerCase().includes(searchText);
         }
-        if (item.type === "audio") {
-          return item.text?.toLowerCase().includes(searchText);
-        }
-        if (item.type === "voice") {
-          return item.name.toLowerCase().includes(searchText);
+        if (item.type === "soundEffect") {
+          return item.text?.toLowerCase().includes(searchText) ?? false;
         }
         if (item.type === "video") {
           return item.prompt.toLowerCase().includes(searchText);
@@ -403,7 +381,7 @@ export default function ExploreGallery({
     <div className="space-y-6">
       {/* Filters and Controls */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Search */}
             <div className="relative max-w-sm flex-1">
@@ -468,22 +446,14 @@ export default function ExploreGallery({
             >
               <ImageIcon className="mr-2 h-4 w-4" />
               Images ({images.length})
-            </Button>
+            </Button>{" "}
             <Button
-              variant={activeTab === "audio" ? "default" : "outline"}
+              variant={activeTab === "soundEffects" ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveTab("audio")}
+              onClick={() => setActiveTab("soundEffects")}
             >
-              <Volume2 className="mr-2 h-4 w-4" />
-              Audio ({audioClips.length})
-            </Button>
-            <Button
-              variant={activeTab === "voices" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("voices")}
-            >
-              <Mic className="mr-2 h-4 w-4" />
-              Voices ({voices.length})
+              <Music className="mr-2 h-4 w-4" />
+              Sound Effects ({soundEffects.length})
             </Button>
             <Button
               variant={activeTab === "videos" ? "default" : "outline"}
@@ -499,7 +469,7 @@ export default function ExploreGallery({
 
       {/* Content */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent>
           {filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Globe className="mb-4 h-12 w-12 text-muted-foreground" />
@@ -520,7 +490,7 @@ export default function ExploreGallery({
                   className={`overflow-hidden ${viewMode === "list" ? "flex" : ""}`}
                 >
                   <CardContent
-                    className={`p-4 ${viewMode === "list" ? "flex w-full items-center gap-4" : ""}`}
+                    className={`${viewMode === "list" ? "flex w-full items-center gap-4" : ""}`}
                   >
                     {/* Creator Badge */}
                     {item.type === "image" && (
@@ -559,12 +529,12 @@ export default function ExploreGallery({
                                     alt={item.prompt}
                                     width={400}
                                     height={400}
-                                    className="h-auto w-full object-cover transition-transform group-hover:scale-105"
+                                    className="!static object-cover transition-transform group-hover:scale-105"
                                   />
                                 )}
                                 <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
                               </div>
-                              <p className="line-clamp-2 text-sm font-medium text-gray-900">
+                              <p className="line-clamp-2 text-sm font-medium">
                                 {item.prompt}
                               </p>
                             </div>
@@ -605,9 +575,9 @@ export default function ExploreGallery({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col w-full items-start gap-4">
+                          <div className="flex w-full flex-col items-start gap-4">
                             <div
-                              className="flex cursor-pointer items-center gap-4"
+                              className="flex w-full cursor-pointer flex-col items-center gap-4 sm:flex-row"
                               onClick={() => openImageDialog(item)}
                             >
                               <div className="h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg">
@@ -638,7 +608,7 @@ export default function ExploreGallery({
                                     image
                                   </Badge>
                                 </div>
-                                <p className="line-clamp-2 font-medium text-gray-900">
+                                <p className="line-clamp-2 text-sm font-medium">
                                   {item.prompt}
                                 </p>
                                 <p className="text-sm text-gray-500">
@@ -688,64 +658,158 @@ export default function ExploreGallery({
                           </div>
                         )}
                       </>
-                    )}
-                    {(item.type === "audio" || item.type === "voice") && (
-                      <div className="space-y-3">
-                        <div>
-                          {item.type === "audio" && "text" in item && (
-                            <p className="font-medium text-gray-900">
-                              {item.text ?? "Audio Clip"}
-                            </p>
-                          )}
-                          {item.type === "voice" && "name" in item && (
-                            <p className="font-medium text-gray-900">
-                              {item.name}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-500">
-                            {item.service}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {formatDistanceToNow(new Date(item.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </p>
-                        </div>
-                        {item.s3Key && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => playAudio(item.s3Key!, item.id)}
-                              className="flex-1"
-                            >
-                              {playingAudio === item.id ? (
-                                <Pause className="mr-2 h-4 w-4" />
-                              ) : (
-                                <Play className="mr-2 h-4 w-4" />
-                              )}
-                              {playingAudio === item.id ? "Pause" : "Play"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                downloadFile(
-                                  item.s3Key!,
-                                  `${item.type}_${item.id}.mp3`,
-                                )
-                              }
-                              disabled={downloadingFiles.has(item.s3Key)}
-                            >
-                              {downloadingFiles.has(item.s3Key) ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Download className="h-4 w-4" />
-                              )}
-                            </Button>
+                    )}{" "}
+                    {item.type === "soundEffect" && (
+                      <>
+                        {viewMode === "grid" ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Music className="h-4 w-4" />
+                                <Badge variant="secondary" className="text-xs">
+                                  sound effect
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  By {getUserDisplayName(item.user)}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="line-clamp-2 text-sm font-medium">
+                                {item.text ?? "Sound Effect"}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {item.service}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {formatDistanceToNow(new Date(item.createdAt), {
+                                  addSuffix: true,
+                                })}
+                              </p>
+                            </div>
+                            {item.s3Key && (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    playAudio(item.s3Key!, item.id)
+                                  }
+                                  className="flex-1"
+                                >
+                                  {playingAudio === item.id ? (
+                                    <Pause className="mr-2 h-4 w-4" />
+                                  ) : (
+                                    <Play className="mr-2 h-4 w-4" />
+                                  )}
+                                  {playingAudio === item.id ? "Pause" : "Play"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    downloadFile(
+                                      item.s3Key!,
+                                      `soundeffect_${item.id}.mp3`,
+                                    )
+                                  }
+                                  disabled={downloadingFiles.has(item.s3Key)}
+                                >
+                                  {downloadingFiles.has(item.s3Key) ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Download className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex w-full flex-col items-start gap-4">
+                            <div className="flex w-full flex-col items-center gap-4 sm:flex-row">
+                              <div className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                                <Music className="h-6 w-6 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="mb-1 flex items-center gap-2">
+                                  <Music className="h-4 w-4" />
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    sound effect
+                                  </Badge>
+                                </div>
+                                <p className="line-clamp-2 text-sm font-medium">
+                                  {item.text ?? "Sound Effect"}
+                                </p>
+                                <div className="text-xs text-muted-foreground">
+                                  {item.service}
+                                  {item.voice && `• ${item.voice}`}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-center gap-2 text-xs">
+                                <span className="text-muted-foreground">
+                                  {formatDistanceToNow(
+                                    new Date(item.createdAt),
+                                    {
+                                      addSuffix: true,
+                                    },
+                                  )}
+                                </span>
+                                <div className="flex gap-1">
+                                  {item.s3Key && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        playAudio(item.s3Key!, item.id)
+                                      }
+                                      disabled={playingAudio === item.id}
+                                    >
+                                      {playingAudio === item.id ? (
+                                        <Pause className="h-3 w-3" />
+                                      ) : (
+                                        <Play className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  )}
+                                  {item.s3Key && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        downloadFile(
+                                          item.s3Key!,
+                                          `sound-effect-${item.id}.mp3`,
+                                        )
+                                      }
+                                      disabled={downloadingFiles.has(
+                                        item.s3Key,
+                                      )}
+                                    >
+                                      {downloadingFiles.has(item.s3Key) ? (
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                      ) : (
+                                        <Download className="h-3 w-3" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                By {getUserDisplayName(item.user)}
+                              </span>
+                            </div>
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
                     {item.type === "video" && (
                       <>

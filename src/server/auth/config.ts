@@ -18,6 +18,7 @@ declare module "next-auth" {
       id: string;
       username?: string;
       subscriptionTier?: string;
+      role?: string;
       // ...other properties
       // role: UserRole;
     } & DefaultSession["user"];
@@ -27,6 +28,7 @@ declare module "next-auth" {
     // ...other properties
     username?: string | null;
     subscriptionTier?: string | null;
+    role?: string | null;
   }
 }
 
@@ -34,6 +36,7 @@ declare module "@auth/core/jwt" {
   interface JWT {
     username?: string;
     subscriptionTier?: string;
+    role?: string;
   }
 }
 
@@ -68,6 +71,7 @@ export const authConfig = {
               username: true,
               password: true,
               subscriptionTier: true,
+              role: true,
             },
           });
 
@@ -85,6 +89,7 @@ export const authConfig = {
                 username: true,
                 password: true,
                 subscriptionTier: true,
+                role: true,
               },
             });
           }
@@ -106,6 +111,7 @@ export const authConfig = {
             image: user.image,
             username: user.username,
             subscriptionTier: user.subscriptionTier,
+            role: user.role,
           } as User;
         } catch {
           return null;
@@ -136,6 +142,7 @@ export const authConfig = {
           id: token.sub!,
           username: token.username,
           subscriptionTier: token.subscriptionTier,
+          role: token.role,
         },
       };
     },
@@ -146,14 +153,18 @@ export const authConfig = {
         token.email = user.email;
         token.username = user.username ?? undefined;
         token.subscriptionTier = user.subscriptionTier ?? undefined;
+        token.role = user.role ?? undefined;
       }
 
-      // If we don't have username or subscriptionTier in token but have user id, fetch them from database
-      if (token.sub && (!token.username || !token.subscriptionTier)) {
+      // If we don't have username, subscriptionTier, or role in token but have user id, fetch them from database
+      if (
+        token.sub &&
+        (!token.username || !token.subscriptionTier || !token.role)
+      ) {
         try {
           const dbUser = await db.user.findUnique({
             where: { id: token.sub },
-            select: { username: true, subscriptionTier: true },
+            select: { username: true, subscriptionTier: true, role: true },
           });
           if (dbUser?.username) {
             token.username = dbUser.username;
@@ -161,19 +172,56 @@ export const authConfig = {
           if (dbUser?.subscriptionTier) {
             token.subscriptionTier = dbUser.subscriptionTier;
           }
+          if (dbUser?.role) {
+            token.role = dbUser.role;
+          }
         } catch (error) {
           console.error("Error fetching user data for token:", error);
         }
       }
 
       // Handle session updates (when update() is called from frontend)
-      if (trigger === "update" && session) {
-        const sessionUpdate = session as { name?: string; email?: string };
-        if (sessionUpdate.name) {
-          token.name = sessionUpdate.name;
+      if (trigger === "update") {
+        // Always fetch fresh data from database when session is updated
+        if (token.sub) {
+          try {
+            const dbUser = await db.user.findUnique({
+              where: { id: token.sub },
+              select: { username: true, subscriptionTier: true, role: true },
+            });
+            if (dbUser) {
+              token.username = dbUser.username ?? undefined;
+              token.subscriptionTier = dbUser.subscriptionTier ?? undefined;
+              token.role = dbUser.role ?? undefined;
+            }
+          } catch (error) {
+            console.error(
+              "Error fetching fresh user data for token update:",
+              error,
+            );
+          }
         }
-        if (sessionUpdate.email) {
-          token.email = sessionUpdate.email;
+
+        // Also handle explicit session updates
+        if (session) {
+          const sessionUpdate = session as {
+            name?: string;
+            email?: string;
+            subscriptionTier?: string;
+            role?: string;
+          };
+          if (sessionUpdate.name) {
+            token.name = sessionUpdate.name;
+          }
+          if (sessionUpdate.email) {
+            token.email = sessionUpdate.email;
+          }
+          if (sessionUpdate.subscriptionTier) {
+            token.subscriptionTier = sessionUpdate.subscriptionTier;
+          }
+          if (sessionUpdate.role) {
+            token.role = sessionUpdate.role;
+          }
         }
       }
 

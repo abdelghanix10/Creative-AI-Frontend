@@ -9,17 +9,14 @@ export default async function ExplorePage() {
       cache: "no-store", // Always get fresh data
     },
   );
-
   let exploreData: {
     images: [];
-    audioClips: [];
-    voices: [];
+    soundEffects: [];
     videos: [];
     totalItems: number;
   } = {
     images: [],
-    audioClips: [],
-    voices: [],
+    soundEffects: [],
     videos: [],
     totalItems: 0,
   };
@@ -41,12 +38,10 @@ export default async function ExplorePage() {
               {exploreData.totalItems} public items)
             </p>
           </div>
-        </div>
-
+        </div>{" "}
         <ExploreGallery
           images={exploreData.images}
-          audioClips={exploreData.audioClips}
-          voices={exploreData.voices}
+          soundEffects={exploreData.soundEffects}
           videos={exploreData.videos}
         />
       </section>

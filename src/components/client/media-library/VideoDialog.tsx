@@ -99,6 +99,24 @@ export function VideoDialog({
 
             {/* Video Controls */}
             <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+                <Button
+                onClick={() => {
+                  const videoElement = document.querySelector('video');
+                  if (videoElement) {
+                  if (videoElement.requestFullscreen) {
+                    videoElement.requestFullscreen();
+                  } else if ((videoElement as any).webkitRequestFullscreen) {
+                    (videoElement as any).webkitRequestFullscreen();
+                  } else if ((videoElement as any).msRequestFullscreen) {
+                    (videoElement as any).msRequestFullscreen();
+                  }
+                  }
+                }}
+                className="flex items-center gap-2"
+                >
+                <Monitor className="h-4 w-4" />
+                Full Screen
+                </Button>
               <Button
                 onClick={handleDownload}
                 disabled={isDownloading || !videoUrl}

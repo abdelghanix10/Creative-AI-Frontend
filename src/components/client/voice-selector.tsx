@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { IoChevronDown, IoChevronUp, IoCloudUploadOutline } from "react-icons/io5";
+import {
+  IoChevronDown,
+  IoChevronUp,
+  IoCloudUploadOutline,
+} from "react-icons/io5";
 import { useVoiceStore } from "~/stores/voice-store";
 import { ServiceType } from "~/types/services";
 
@@ -69,13 +73,15 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
     }
     setIsUploading(true);
     setUploadError(null);
-  
+
     const formData = new FormData();
     formData.append("file", selectedFile);
     // Remove extension and replace dots with underscores for voice_name
-    const baseName = selectedFile.name.replace(/\.[^/.]+$/, "").replace(/\./g, "_");
+    const baseName = selectedFile.name
+      .replace(/\.[^/.]+$/, "")
+      .replace(/\./g, "_");
     formData.append("voice_name", baseName);
-  
+
     try {
       // Determine API endpoint based on service
       let apiPath = "";
@@ -95,19 +101,26 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: "Upload failed" }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ detail: "Upload failed" }));
         throw new Error(errorData.detail || "Failed to upload voice.");
       }
 
       const result = await response.json(); // This might not be needed if the 202 response has no body or irrelevant body
       // alert(`Voice upload initiated. It will be processed in the background.`);
-      console.log("Voice upload initiated. It will be processed in the background.", result);
+      console.log(
+        "Voice upload initiated. It will be processed in the background.",
+        result,
+      );
       setSelectedFile(null);
-      if(fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = "";
       // Optionally, trigger a refresh of the voice list after a delay, or provide a manual refresh button
     } catch (error) {
       console.error("Upload error:", error);
-      setUploadError(error instanceof Error ? error.message : "An unknown error occurred.");
+      setUploadError(
+        error instanceof Error ? error.message : "An unknown error occurred.",
+      );
     } finally {
       setIsUploading(false);
     }
@@ -118,7 +131,7 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
       <div className="relative" ref={dropdownRef}>
         <div
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 hover:cursor-pointer hover:bg-gray-100 hover:bg-opacity-30"
+          className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-foreground hover:cursor-pointer hover:bg-muted/50"
         >
           <div className="flex items-center">
             <div
@@ -130,18 +143,18 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
             </span>
           </div>
           {isOpen ? (
-            <IoChevronUp className="h-4 w-4 text-gray-400" />
+            <IoChevronUp className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <IoChevronDown className="h-4 w-4 text-gray-400" />
+            <IoChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+          <div className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-background shadow-lg">
             {voices.map((voice) => (
               <div
                 key={voice.id}
-                className={`flex items-center px-3 py-2 hover:cursor-pointer hover:bg-gray-100 ${voice.id === selectedVoice?.id ? "bg-gray-50" : ""}`}
+                className={`flex items-center px-3 py-2 text-foreground hover:cursor-pointer hover:bg-muted ${voice.id === selectedVoice?.id ? "bg-muted/50" : ""}`}
                 onClick={() => {
                   selectVoice(service, voice.id);
                   setIsOpen(false);
@@ -159,31 +172,52 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
         {/* Voice Upload Section */}
         {/* Show upload for StyleTTS2 or SeedVC */}
         {(service === "styletts2" || service === "seedvc") && (
-          <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-            <h3 className="mb-2 text-sm font-medium text-gray-700">Upload New Voice </h3>
-            <input 
-              type="file" 
-              accept="audio/*" 
-              onChange={handleFileChange} 
+          <div className="mt-2 rounded-lg border border-border bg-background p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              Upload New Voice{" "}
+            </h3>
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={handleFileChange}
               ref={fileInputRef}
-              className="mb-2 block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+              className="mb-2 block w-full text-sm text-muted-foreground file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950/30 dark:file:text-blue-400 dark:hover:file:bg-blue-900/50"
             />
             {selectedFile && (
-              <p className="mb-1 text-xs text-gray-600">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              <p className="mb-1 text-xs text-muted-foreground">
+                Selected: {selectedFile.name} (
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </p>
             )}
-            {uploadError && <p className="mb-2 text-xs text-red-500">{uploadError}</p>}
+            {uploadError && (
+              <p className="mb-2 text-xs text-destructive">{uploadError}</p>
+            )}
             <button
               onClick={handleUpload}
               disabled={!selectedFile || isUploading}
-              className="flex w-full items-center justify-center rounded-md bg-black px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-80"
+              className="flex w-full items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isUploading ? (
                 <>
-                  <svg className="mr-2 h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="mr-2 h-4 w-4 animate-spin text-current"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Uploading...
                 </>
@@ -194,8 +228,9 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
                 </>
               )}
             </button>
-            <p className="mt-1 text-center text-xs text-gray-500">
-              Max 10MB, recommended {service === "styletts2" ? "3-30s" : "3-10s"} audio.
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              Max 10MB, recommended{" "}
+              {service === "styletts2" ? "3-30s" : "3-10s"} audio.
             </p>
           </div>
         )}

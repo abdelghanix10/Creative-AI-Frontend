@@ -1,13 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import {
   createCheckoutSession,
   getSubscriptionPlans,
-  getUserSubscription,
   getUserInvoices,
 } from "~/actions/subscription";
 import { PageLayout } from "~/components/client/page-layout";
@@ -15,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useUserCredits } from "~/hooks/use-user-credits";
+import { useUserSubscription } from "~/hooks/use-user-subscription";
 import { Check, Crown, Sparkles } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -33,15 +33,6 @@ interface SubscriptionPlan {
   stripeYearlyPriceId?: string | null;
 }
 
-interface Subscription {
-  id: string;
-  status: string;
-  currentPeriodStart: Date;
-  currentPeriodEnd: Date;
-  interval: string;
-  plan: SubscriptionPlan;
-}
-
 interface Invoice {
   id: string;
   amount: number;
@@ -57,14 +48,21 @@ export default function BillingPage() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { credits, loading: creditsLoading, refetchCredits } = useUserCredits();
+  const { subscription, currentTier, refetchSubscription } =
+    useUserSubscription();
   const [loading, setLoading] = useState<string | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
+  // Add a ref to track if data has been fetched
+  const dataFetched = useRef(false);
 
-  const currentTier =
-    subscription?.plan?.name ?? session?.user?.subscriptionTier ?? "Free";
+  // Memoized function to refetch all data after successful subscription
+  const refetchAllData = useCallback(async () => {
+    await Promise.all([refetchSubscription(), refetchCredits()]);
+    // Reset the dataFetched flag to allow refetching after subscription changes
+    dataFetched.current = true;
+  }, [refetchSubscription, refetchCredits]);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -72,7 +70,8 @@ export default function BillingPage() {
 
     if (success) {
       toast.success("Subscription updated successfully!");
-      void refetchCredits();
+      // Refetch all subscription-related data after successful upgrade
+      void refetchAllData();
       router.replace("/app/settings/billing");
     }
 
@@ -80,13 +79,20 @@ export default function BillingPage() {
       toast.error("Subscription update canceled.");
       router.replace("/app/settings/billing");
     }
-  }, [searchParams, router, refetchCredits]); // Fetch plans and user data
+  }, [searchParams, router, refetchAllData]);
+
+  // Fetch plans and user data only once when the page loads
   useEffect(() => {
+    // Skip if data has already been fetched
+    if (dataFetched.current) {
+      return;
+    }
+
     const fetchData = async () => {
       try {
         setPlansLoading(true);
 
-        // Fetch subscription plans with explicit typing
+        // Fetch subscription plans
         try {
           const subscriptionPlans = await getSubscriptionPlans();
           setPlans(subscriptionPlans ?? []);
@@ -95,16 +101,8 @@ export default function BillingPage() {
           setPlans([]);
         }
 
-        // Fetch user subscription if logged in
+        // Fetch user invoices if logged in
         if (session?.user?.id) {
-          try {
-            const userSubscription = await getUserSubscription(session.user.id);
-            setSubscription(userSubscription ?? null);
-          } catch (error) {
-            console.error("Error fetching user subscription:", error);
-            setSubscription(null);
-          }
-
           try {
             const userInvoices = await getUserInvoices(session.user.id);
             setInvoices(userInvoices ?? []);
@@ -113,6 +111,9 @@ export default function BillingPage() {
             setInvoices([]);
           }
         }
+
+        // Mark data as fetched
+        dataFetched.current = true;
       } catch (error) {
         console.error("Error fetching billing data:", error);
         toast.error("Failed to load billing information");
@@ -120,12 +121,21 @@ export default function BillingPage() {
         setPlansLoading(false);
       }
     };
+
     if (session?.user) {
       void fetchData();
     } else {
-      // Still fetch plans for guest users
-      void getSubscriptionPlans().then(setPlans).catch(console.error);
-      setPlansLoading(false);
+      // Still fetch plans for guest users, but only once
+      void getSubscriptionPlans()
+        .then((plans) => {
+          setPlans(plans ?? []);
+          dataFetched.current = true;
+          setPlansLoading(false);
+        })
+        .catch((error) => {
+          console.error(error);
+          setPlansLoading(false);
+        });
     }
   }, [session]);
 
@@ -144,6 +154,7 @@ export default function BillingPage() {
       setLoading(null);
     }
   };
+
   const isCurrentPlan = (planName: string) => currentTier === planName;
   const canUpgrade = (planName: string) => {
     const tierOrder = ["Free", "Lite", "Pro"];
@@ -204,37 +215,41 @@ export default function BillingPage() {
     >
       <div className="space-y-8">
         {/* Current Subscription Overview */}
-        <Card className="border-2 border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+        <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-600" />
+              <Sparkles className="h-5 w-5 text-primary" />
               Current Subscription
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <p className="text-sm text-gray-600">Plan</p>
+                <p className="text-sm text-muted-foreground">Plan</p>{" "}
                 <div className="flex items-center gap-2">
-                  <p className="text-xl font-bold">{currentTier}</p>
+                  <p className="text-xl font-bold text-foreground">
+                    {currentTier}
+                  </p>
                   {currentTier !== "Free" && (
                     <Crown className="h-4 w-4 text-yellow-500" />
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Credits Remaining</p>
+                <p className="text-sm text-muted-foreground">
+                  Credits Remaining
+                </p>
                 {creditsLoading ? (
                   <Skeleton className="h-6 w-16" />
                 ) : (
-                  <p className="text-xl font-bold">
+                  <p className="text-xl font-bold text-foreground">
                     {credits?.toLocaleString() ?? 0}
                   </p>
                 )}
-              </div>{" "}
+              </div>
               <div>
-                <p className="text-sm text-gray-600">Monthly Credits</p>
-                <p className="text-xl font-bold">
+                <p className="text-sm text-muted-foreground">Monthly Credits</p>
+                <p className="text-xl font-bold text-foreground">
                   {(() => {
                     const currentPlan = plans.find(
                       (p) => p.name === currentTier,
@@ -245,10 +260,10 @@ export default function BillingPage() {
               </div>
             </div>
           </CardContent>
-        </Card>{" "}
-        {/* Subscription Plans */}
+        </Card>
+        {/* Subscription Plans */}{" "}
         <div>
-          <h2 className="mb-6 text-center text-2xl font-bold">
+          <h2 className="mb-6 text-center text-2xl font-bold text-foreground">
             Available Subscription Plans
           </h2>
           <div className="mx-auto max-w-5xl">
@@ -262,7 +277,8 @@ export default function BillingPage() {
                     Annually (Save 20%)
                   </TabsTrigger>
                 </TabsList>
-              </div>{" "}
+              </div>
+
               <TabsContent value="monthly">
                 <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
                   {plans.map((plan, i) => (
@@ -273,7 +289,6 @@ export default function BillingPage() {
                       viewport={{ once: true }}
                       transition={{ duration: 0.5, delay: i * 0.1 }}
                     >
-                      {" "}
                       <Card
                         className={`relative h-full overflow-hidden ${
                           plan.name === "Pro"
@@ -295,26 +310,28 @@ export default function BillingPage() {
                           </div>
                         )}
                         <CardContent className="flex h-full flex-col p-6">
-                          <h3 className="text-2xl font-bold">
+                          <h3 className="text-2xl font-bold text-foreground">
                             {plan.displayName}
                           </h3>
                           <div className="mt-4 flex items-baseline">
-                            <span className="text-4xl font-bold">
+                            <span className="text-4xl font-bold text-foreground">
                               {formatPrice(plan.price)}
                             </span>
                             <span className="ml-1 text-muted-foreground">
                               /month
                             </span>
-                          </div>{" "}
+                          </div>
                           <p className="mt-2 text-muted-foreground">
                             {plan.description ??
                               `${plan.credits.toLocaleString()} credits per month`}
-                          </p>
+                          </p>{" "}
                           <ul className="my-6 flex-grow space-y-3">
                             {parseFeatures(plan.features).map((feature, j) => (
                               <li key={j} className="flex items-center">
                                 <Check className="mr-2 size-4 text-primary" />
-                                <span>{feature}</span>
+                                <span className="text-foreground">
+                                  {feature}
+                                </span>
                               </li>
                             ))}
                           </ul>
@@ -359,7 +376,8 @@ export default function BillingPage() {
                     </motion.div>
                   ))}
                 </div>
-              </TabsContent>{" "}
+              </TabsContent>
+
               <TabsContent value="annually">
                 <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
                   {plans.map((plan, i) => {
@@ -396,13 +414,13 @@ export default function BillingPage() {
                               <Check className="mr-1 inline h-3 w-3" />
                               Current Plan
                             </div>
-                          )}
+                          )}{" "}
                           <CardContent className="flex h-full flex-col p-6">
-                            <h3 className="text-2xl font-bold">
+                            <h3 className="text-2xl font-bold text-foreground">
                               {plan.displayName}
                             </h3>
                             <div className="mt-4 flex items-baseline">
-                              <span className="text-4xl font-bold">
+                              <span className="text-4xl font-bold text-foreground">
                                 {formatPrice(monthlyEquivalent)}
                               </span>
                               <span className="ml-1 text-muted-foreground">
@@ -419,20 +437,24 @@ export default function BillingPage() {
                                 `${plan.credits.toLocaleString()} credits per month`}
                               {plan.price > 0 &&
                                 " • Save 20% with annual billing"}
-                            </p>
+                            </p>{" "}
                             <ul className="my-6 flex-grow space-y-3">
                               {parseFeatures(plan.features).map(
                                 (feature, j) => (
                                   <li key={j} className="flex items-center">
                                     <Check className="mr-2 size-4 text-primary" />
-                                    <span>{feature}</span>
+                                    <span className="text-foreground">
+                                      {feature}
+                                    </span>
                                   </li>
                                 ),
                               )}
                               {plan.price > 0 && (
                                 <li className="flex items-center">
                                   <Check className="mr-2 size-4 text-primary" />
-                                  <span>Save 20% with annual billing</span>
+                                  <span className="text-foreground">
+                                    Save 20% with annual billing
+                                  </span>
                                 </li>
                               )}
                             </ul>
@@ -482,24 +504,26 @@ export default function BillingPage() {
             </Tabs>
           </div>
         </div>
-        {/* Additional Information */}
+        {/* Additional Information */}{" "}
         <Card>
           <CardHeader>
-            <CardTitle>Billing Information</CardTitle>
+            <CardTitle className="text-foreground">
+              Billing Information
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <h4 className="font-medium">Payment Method</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="font-medium text-foreground">Payment Method</h4>
+                <p className="text-sm text-muted-foreground">
                   {currentTier === "Free"
                     ? "No payment method required"
                     : "Managed through Stripe"}
                 </p>
               </div>
               <div>
-                <h4 className="font-medium">Billing Cycle</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="font-medium text-foreground">Billing Cycle</h4>
+                <p className="text-sm text-muted-foreground">
                   {subscription?.interval
                     ? subscription.interval.charAt(0).toUpperCase() +
                       subscription.interval.slice(1)
@@ -509,8 +533,8 @@ export default function BillingPage() {
             </div>
 
             {currentTier !== "Free" && (
-              <div className="rounded-lg bg-blue-50 p-4">
-                <p className="text-sm text-blue-800">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm text-foreground">
                   <strong>Note:</strong> To manage your subscription, cancel, or
                   update payment methods, please contact our support team.
                   We&apos;ll be happy to assist you with any billing changes.
@@ -519,27 +543,27 @@ export default function BillingPage() {
             )}
           </CardContent>
         </Card>
-        {/* Invoice History */}
+        {/* Invoice History */}{" "}
         {invoices.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Invoice History</CardTitle>
+              <CardTitle className="text-foreground">Invoice History</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {invoices.slice(0, 5).map((invoice) => (
                   <div
                     key={invoice.id}
-                    className="flex items-center justify-between border-b pb-2"
+                    className="flex items-center justify-between border-b border-border pb-2"
                   >
                     <div>
-                      <p className="font-medium">
-                        {formatPrice(invoice.amount / 100)}
+                      <p className="font-medium text-foreground">
+                        {formatPrice(invoice.amount)}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {invoice.description ?? "Subscription payment"}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {new Date(invoice.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -559,7 +583,7 @@ export default function BillingPage() {
                           href={invoice.invoiceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline"
+                          className="text-xs text-primary hover:text-primary/80 hover:underline"
                         >
                           View Invoice
                         </a>

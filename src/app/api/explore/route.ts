@@ -4,7 +4,7 @@ import { db } from "~/server/db";
 export async function GET() {
   try {
     // Get all public media content from all users (remove userId filter)
-    const [allImages, allAudioClips, allVoices, allVideos] = await Promise.all([
+    const [allImages, allSoundEffects, allVideos] = await Promise.all([
       // All public images
       db.generatedImage.findMany({
         where: {
@@ -28,10 +28,11 @@ export async function GET() {
         take: 100, // Limit to 100 for performance
       }),
 
-      // All public audio clips
+      // All public sound effects (make-an-audio only)
       db.generatedAudioClip.findMany({
         where: {
           failed: false,
+          service: "make-an-audio",
         },
         orderBy: { createdAt: "desc" },
         select: {
@@ -40,25 +41,6 @@ export async function GET() {
           voice: true,
           s3Key: true,
           service: true,
-          createdAt: true,
-          user: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-        take: 100,
-      }),
-
-      // All public voices
-      db.userVoice.findMany({
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          service: true,
-          s3Key: true,
           createdAt: true,
           user: {
             select: {
@@ -98,17 +80,11 @@ export async function GET() {
         take: 100,
       }),
     ]);
-
     return NextResponse.json({
       images: allImages,
-      audioClips: allAudioClips,
-      voices: allVoices,
+      soundEffects: allSoundEffects,
       videos: allVideos,
-      totalItems:
-        allImages.length +
-        allAudioClips.length +
-        allVoices.length +
-        allVideos.length,
+      totalItems: allImages.length + allSoundEffects.length + allVideos.length,
     });
   } catch (error) {
     console.error("Error fetching explore data:", error);

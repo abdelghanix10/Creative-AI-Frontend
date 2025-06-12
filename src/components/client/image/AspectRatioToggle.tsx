@@ -56,9 +56,11 @@ export function AspectRatioToggle({
 
   return (
     <>
-      <div className="text-lg font-semibold">Image Dimensions (Flux Only)</div>
-      <div className="flex flex-col md:flex-row items-start gap-2">
-        <div className="flex gap-2 flex-wrap">
+      <div className="text-lg font-semibold text-foreground">
+        Image Dimensions (Flux Only)
+      </div>
+      <div className="flex flex-col items-start gap-2 md:flex-row">
+        <div className="flex flex-wrap gap-2">
           {dimensionOptions.map((option) => (
             <Button
               key={option.id}
@@ -70,10 +72,10 @@ export function AspectRatioToggle({
               onClick={() =>
                 handleOptionSelect(option.ratio as AspectRatioOption)
               }
-              className={`h-16 w-16 p-2 flex flex-col items-center gap-2 ${
+              className={`flex h-16 w-16 flex-col items-center gap-2 p-2 ${
                 selectedOption === option.ratio
-                  ? "bg-slate-900/90 hover:bg-slate-900/80"
-                  : ""
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
               <div
@@ -95,11 +97,11 @@ export function AspectRatioToggle({
         </div>
 
         {showCustomInput && (
-          <div className="flex gap-2 mt-2 md:mt-0">
+          <div className="mt-2 flex gap-2 md:mt-0">
             <input
               type="text"
               placeholder="e.g., 4:5"
-              className="px-2 py-1 text-sm border rounded"
+              className="rounded border border-border bg-background px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               value={customRatio}
               onChange={(e) => setCustomRatio(e.target.value)}
             />

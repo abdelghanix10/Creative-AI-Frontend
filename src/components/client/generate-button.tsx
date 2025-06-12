@@ -32,10 +32,10 @@ export function GenerateButton({
     >
       {(showCredits ||
         (showCharacterCount && characterCount !== undefined)) && (
-        <div className="items-cetner flex w-full flex-wrap justify-between gap-2">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
           {showCredits && (
             <div className="flex items-center">
-              <span className="tetx-gray-500 text-xs">
+              <span className="text-xs text-muted-foreground">
                 {creditsRemaining.toLocaleString()} credits remaining
               </span>
             </div>
@@ -45,7 +45,7 @@ export function GenerateButton({
           {showCharacterCount &&
             characterCount !== undefined &&
             characterLimit !== undefined && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 <span>{characterCount}</span> / <span>{characterLimit}</span>
                 <span className="ml-1 hidden sm:inline-block">characters</span>
               </p>
@@ -56,16 +56,14 @@ export function GenerateButton({
       <div
         className={`flex items-center gap-3 ${fullWidth ? "w-full" : "w-full md:w-fit"}`}
       >
-        
-
         <button
-          className={`h-9 w-full whitespace-nowrap rounded-lg bg-black px-3 text-sm font-medium text-white ${isDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-gray-800"}`}
+          className={`h-9 w-full whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground ${isDisabled ? "cursor-not-allowed opacity-50" : "hover:bg-primary/90"}`}
           onClick={onGenerate}
           disabled={isDisabled || isLoading}
         >
           {isLoading ? (
             <div className="flex items-center justify-center">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
               <span className="ml-2">{buttonText}</span>
             </div>
           ) : (

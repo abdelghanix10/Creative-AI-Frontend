@@ -108,8 +108,10 @@ export function NavUser() {
               onClick={() => signOut()}
               className="w-full cursor-pointer"
             >
-              <LogOut className="size-4 text-destructive" />
-              <span className="text-destructive">Sign Out</span>
+              <LogOut className="size-4 text-destructive dark:text-red-600" />
+              <span className="text-destructive dark:text-red-600">
+                Sign Out
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

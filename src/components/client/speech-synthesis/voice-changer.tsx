@@ -146,7 +146,15 @@ export function VoiceChanger({
       <div className="flex flex-1 flex-col justify-between px-4">
         <div className="flex flex-1 items-center justify-center py-8">
           <div
-            className={`w-full max-w-xl rounded-2xl border-2 border-dotted p-8 transition-all duration-200 ${isDragging ? "border-blue-400 bg-blue-50" : "border-gray-300"} ${file ? "bg-white" : "bg-gray-50"}`}
+            className={`w-full max-w-xl rounded-2xl border-2 border-dotted p-8 transition-all duration-200 ${
+              isDragging
+                ? "border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/30"
+                : "border-gray-300 dark:border-gray-600"
+            } ${
+              file
+                ? "bg-background dark:bg-background"
+                : "bg-gray-50 dark:bg-gray-900/50"
+            }`}
             onDragOver={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => {
@@ -179,11 +187,13 @@ export function VoiceChanger({
           >
             {file ? (
               <div className="flex flex-col items-center text-center">
-                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
-                  <FaUpload className="h-4 w-4 text-blue-400" />
+                <div className="mb-4 rounded-lg border border-border bg-background p-3 dark:bg-card">
+                  <FaUpload className="h-4 w-4 text-blue-400 dark:text-blue-500" />
                 </div>
-                <p className="mb-1 text-sm font-medium">{file.name}</p>
-                <p className="mb-1 text-sm font-medium">
+                <p className="mb-1 text-sm font-medium text-foreground">
+                  {file.name}
+                </p>
+                <p className="mb-1 text-sm font-medium text-foreground">
                   {(file.size / (1024 * 1024)).toFixed(2)} MB
                 </p>
                 <button
@@ -194,20 +204,24 @@ export function VoiceChanger({
                     }
                   }}
                   disabled={isLoading}
-                  className={`mt-2 text-sm ${isLoading ? "cursor-not-allowed text-gray-400" : "text-blue-600 hover:text-blue-800"}`}
+                  className={`mt-2 text-sm ${
+                    isLoading
+                      ? "cursor-not-allowed text-muted-foreground"
+                      : "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  }`}
                 >
                   Choose a different file
                 </button>
               </div>
             ) : (
               <div className="flex cursor-pointer flex-col items-center py-8 text-center">
-                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
-                  <FaUpload className="h-4 w-4 text-gray-500" />
+                <div className="mb-4 rounded-lg border border-border bg-background p-3 dark:bg-card">
+                  <FaUpload className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <p className="mb-1 text-sm font-medium">
+                <p className="mb-1 text-sm font-medium text-foreground">
                   Click to upload, or drag and drop
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   MP3 or WAV files only, up to 50MB
                 </p>
               </div>

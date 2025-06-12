@@ -11,13 +11,13 @@ import {
   Pause,
   Download,
   Image as ImageIcon,
-  Mic,
   Volume2,
   Loader2,
   Search,
   Grid3X3,
   List,
   Globe,
+  Music,
 } from "lucide-react";
 import Image from "next/image";
 import { ImageDialog } from "../dashboard/ImageDialog";
@@ -44,9 +44,10 @@ interface MediaAudioClip {
 
 interface MediaVoice {
   id: string;
-  name: string;
-  service: string;
+  text: string | null;
+  voice: string | null;
   s3Key: string | null;
+  service: string;
   createdAt: Date;
 }
 
@@ -355,8 +356,8 @@ export default function MediaLibrary({
         if (item.type === "audio" && "text" in item) {
           return item.text?.toLowerCase().includes(searchText) ?? false;
         }
-        if (item.type === "voice" && "name" in item) {
-          return item.name.toLowerCase().includes(searchText);
+        if (item.type === "voice" && "text" in item) {
+          return item.text?.toLowerCase().includes(searchText) ?? false;
         }
         if (item.type === "video" && "prompt" in item) {
           return item.prompt.toLowerCase().includes(searchText);
@@ -376,7 +377,6 @@ export default function MediaLibrary({
           const getItemName = (item: typeof a) => {
             if ("prompt" in item) return item.prompt;
             if ("text" in item) return item.text ?? "";
-            if ("name" in item) return item.name;
             return "";
           };
           return getItemName(a).localeCompare(getItemName(b));
@@ -397,7 +397,7 @@ export default function MediaLibrary({
     <div className="space-y-6">
       {/* Filters and Controls */}
       <Card>
-        <CardContent className="p-4">
+        <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Search */}
             <div className="relative max-w-sm flex-1">
@@ -444,54 +444,52 @@ export default function MediaLibrary({
         </CardContent>
       </Card>
       {/* Tabs */}
-      <div className="max-w-xs overflow-x-auto sm:max-w-fit">
-        <div className="flex min-w-max max-w-full gap-2 overflow-x-auto pb-2">
-          <Button
-            variant={activeTab === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("all")}
-            className="whitespace-nowrap"
-          >
-            <Globe className="mr-2 h-4 w-4" />
-            All ({allItems.length})
-          </Button>
-          <Button
-            variant={activeTab === "images" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("images")}
-            className="whitespace-nowrap"
-          >
-            <ImageIcon className="mr-2 h-4 w-4" />
-            Images ({images.length})
-          </Button>
-          <Button
-            variant={activeTab === "audio" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("audio")}
-            className="whitespace-nowrap"
-          >
-            <Volume2 className="mr-2 h-4 w-4" />
-            Audio ({audioClips.length})
-          </Button>
-          <Button
-            variant={activeTab === "voices" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("voices")}
-            className="whitespace-nowrap"
-          >
-            <Mic className="mr-2 h-4 w-4" />
-            Voices ({voices.length})
-          </Button>
-          <Button
-            variant={activeTab === "videos" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("videos")}
-            className="whitespace-nowrap"
-          >
-            <Play className="mr-2 h-4 w-4" />
-            Videos ({videos.length})
-          </Button>
-        </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant={activeTab === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("all")}
+          className="whitespace-nowrap"
+        >
+          <Globe className="mr-2 h-4 w-4" />
+          All ({allItems.length})
+        </Button>
+        <Button
+          variant={activeTab === "images" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("images")}
+          className="whitespace-nowrap"
+        >
+          <ImageIcon className="mr-2 h-4 w-4" />
+          Images ({images.length})
+        </Button>{" "}
+        <Button
+          variant={activeTab === "audio" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("audio")}
+          className="whitespace-nowrap"
+        >
+          <Volume2 className="mr-2 h-4 w-4" />
+          Speech ({audioClips.length})
+        </Button>
+        <Button
+          variant={activeTab === "voices" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("voices")}
+          className="whitespace-nowrap"
+        >
+          <Music className="mr-2 h-4 w-4" />
+          Sound Effects ({voices.length})
+        </Button>
+        <Button
+          variant={activeTab === "videos" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveTab("videos")}
+          className="whitespace-nowrap"
+        >
+          <Play className="mr-2 h-4 w-4" />
+          Videos ({videos.length})
+        </Button>
       </div>
       {/* Content */}
       <Card>
@@ -522,7 +520,7 @@ export default function MediaLibrary({
                   className={`overflow-hidden ${viewMode === "list" ? "flex" : ""}`}
                 >
                   <CardContent
-                    className={`p-4 ${viewMode === "list" ? "flex flex-1 items-center gap-4" : ""}`}
+                    className={`${viewMode === "list" ? "flex flex-1 items-center gap-4" : ""}`}
                   >
                     {/* Content for each item type */}
                     {item.type === "image" && "prompt" in item && (
@@ -604,7 +602,7 @@ export default function MediaLibrary({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex w-full items-center gap-4">
+                          <div className="flex w-full flex-col items-center gap-4 sm:flex-row">
                             <div
                               className="relative h-16 w-24 flex-shrink-0 cursor-pointer overflow-hidden rounded-md bg-muted transition-opacity hover:opacity-90"
                               onClick={() => openImageDialog(item)}
@@ -629,7 +627,7 @@ export default function MediaLibrary({
                                   image
                                 </Badge>
                               </div>
-                              <p className="line-clamp-2 text-sm font-medium">
+                              <p className="line-clamp-1 text-sm font-medium">
                                 {item.prompt}
                               </p>
                               <div className="max-w-fit truncate text-xs text-muted-foreground">
@@ -641,8 +639,8 @@ export default function MediaLibrary({
                                 • {item.modelId.split("/").pop()}
                               </div>
                             </div>
-                            <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
-                              <span>
+                            <div className="flex flex-col items-center gap-2 text-xs">
+                              <span className="text-muted-foreground">
                                 {formatDistanceToNow(new Date(item.createdAt), {
                                   addSuffix: true,
                                 })}
@@ -734,8 +732,8 @@ export default function MediaLibrary({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex w-full items-center gap-4">
-                            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                          <div className="flex w-full flex-col items-center gap-4 sm:flex-row">
+                            <div className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-muted">
                               <Volume2 className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -745,15 +743,15 @@ export default function MediaLibrary({
                                   audio
                                 </Badge>
                               </div>
-                              <p className="truncate text-sm font-medium">
+                              <p className="line-clamp-2 text-sm font-medium">
                                 {item.text ?? "Generated Audio"}
                               </p>
                               <div className="text-xs text-muted-foreground">
                                 {item.service} {item.voice && `• ${item.voice}`}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>
+                            <div className="flex flex-col items-center gap-2 text-xs">
+                              <span className="text-muted-foreground">
                                 {formatDistanceToNow(new Date(item.createdAt), {
                                   addSuffix: true,
                                 })}
@@ -799,16 +797,16 @@ export default function MediaLibrary({
                           </div>
                         )}
                       </>
-                    )}{" "}
-                    {item.type === "voice" && "name" in item && (
+                    )}
+                    {item.type === "voice" && "text" in item && (
                       <>
                         {viewMode === "grid" ? (
                           <div>
                             <div className="mb-2 flex items-start justify-between">
                               <div className="flex items-center gap-2">
-                                <Mic className="h-4 w-4" />
+                                <Music className="h-4 w-4" />
                                 <Badge variant="secondary" className="text-xs">
-                                  voice
+                                  sound effect
                                 </Badge>
                               </div>
                               <span className="text-xs text-muted-foreground">
@@ -817,13 +815,12 @@ export default function MediaLibrary({
                                 })}
                               </span>
                             </div>
-
                             <p className="mb-2 text-sm font-medium">
-                              {item.name}
+                              {item.text ?? "Sound Effect"}
                             </p>
                             <div className="flex items-center justify-between">
                               <div className="text-xs text-muted-foreground">
-                                {item.service}
+                                {item.service} {item.voice && `• ${item.voice}`}
                               </div>
                               <div className="flex gap-1">
                                 {item.s3Key && (
@@ -865,26 +862,26 @@ export default function MediaLibrary({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex w-full items-center gap-4">
-                            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-md bg-muted">
-                              <Mic className="h-6 w-6 text-muted-foreground" />
+                          <div className="flex w-full flex-col items-center gap-4 sm:flex-row">
+                            <div className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-muted">
+                              <Music className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="mb-1 flex items-center gap-2">
-                                <Mic className="h-4 w-4" />
+                                <Music className="h-4 w-4" />
                                 <Badge variant="secondary" className="text-xs">
-                                  voice
+                                  sound effect
                                 </Badge>
                               </div>
-                              <p className="truncate text-sm font-medium">
-                                {item.name}
+                              <p className="line-clamp-2 text-sm font-medium">
+                                {item.text ?? "Sound Effect"}
                               </p>
                               <div className="text-xs text-muted-foreground">
-                                {item.service}
+                                {item.service} {item.voice && `• ${item.voice}`}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>
+                            <div className="flex flex-col items-center gap-2 text-xs">
+                              <span className="text-muted-foreground">
                                 {formatDistanceToNow(new Date(item.createdAt), {
                                   addSuffix: true,
                                 })}
@@ -913,7 +910,7 @@ export default function MediaLibrary({
                                     onClick={() =>
                                       downloadFile(
                                         item.s3Key!,
-                                        `voice-${item.id}.mp3`,
+                                        `sound-effect-${item.id}.mp3`,
                                       )
                                     }
                                     disabled={downloadingFiles.has(item.s3Key)}

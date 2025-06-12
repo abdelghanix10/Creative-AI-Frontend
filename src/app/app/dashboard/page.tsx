@@ -31,9 +31,10 @@ export default async function Page() {
     }[];
     voices: {
       id: string;
-      name: string;
-      service: string;
+      text: string;
+      voice: string;
       s3Key: string;
+      service: string;
       createdAt: Date;
     }[];
     videos: {
@@ -75,8 +76,12 @@ export default async function Page() {
     });
 
     // Get count of user voices (models) for this user
-    const voiceCountData = await db.userVoice.count({
-      where: { userId: userId },
+    const voiceCountData = await db.generatedAudioClip.count({
+      where: {
+        userId: userId,
+        service: "make-an-audio",
+        failed: false,
+      },
     });
 
     // Get recent generations
@@ -99,11 +104,12 @@ export default async function Page() {
             createdAt: true,
           },
         }),
-        // Recent audio clips (voice & sound effects)
+        // Recent audio clips (StyleTTS2 and SeedVC)
         db.generatedAudioClip.findMany({
           where: {
             userId: userId,
             failed: false,
+            service: { in: ["styletts2", "seedvc"] },
           },
           orderBy: { createdAt: "desc" },
           take: 6,
@@ -116,16 +122,21 @@ export default async function Page() {
             createdAt: true,
           },
         }),
-        // Recent user voices
-        db.userVoice.findMany({
-          where: { userId: userId },
+        // Recent voices (Make-an-Audio / Sound Effects)
+        db.generatedAudioClip.findMany({
+          where: {
+            userId: userId,
+            failed: false,
+            service: "make-an-audio",
+          },
           orderBy: { createdAt: "desc" },
           take: 6,
           select: {
             id: true,
-            name: true,
-            service: true,
+            text: true,
+            voice: true,
             s3Key: true,
+            service: true,
             createdAt: true,
           },
         }),
@@ -166,6 +177,8 @@ export default async function Page() {
       })),
       voices: recentVoices.map((voice) => ({
         ...voice,
+        text: voice.text ?? "",
+        voice: voice.voice ?? "",
         s3Key: voice.s3Key ?? "",
       })),
       videos: recentVideos,

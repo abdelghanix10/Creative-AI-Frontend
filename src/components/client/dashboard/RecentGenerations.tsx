@@ -10,9 +10,9 @@ import {
   Pause,
   Download,
   Image as ImageIcon,
-  Mic,
   Volume2,
   Loader2,
+  Music,
 } from "lucide-react";
 import Image from "next/image";
 import { ImageDialog } from "./ImageDialog";
@@ -39,9 +39,10 @@ interface RecentAudioClip {
 
 interface RecentVoice {
   id: string;
-  name: string;
-  service: string;
+  text: string | null;
+  voice: string | null;
   s3Key: string | null;
+  service: string;
   createdAt: Date;
 }
 
@@ -372,20 +373,20 @@ export default function RecentGenerations({
               onClick={() => setActiveTab("images")}
             >
               Images
-            </Button>
+            </Button>{" "}
             <Button
               variant={activeTab === "audio" ? "default" : "outline"}
               size="sm"
               onClick={() => setActiveTab("audio")}
             >
-              Audio
+              Speech
             </Button>{" "}
             <Button
               variant={activeTab === "voices" ? "default" : "outline"}
               size="sm"
               onClick={() => setActiveTab("voices")}
             >
-              Voices
+              Sound Effects
             </Button>
             <Button
               variant={activeTab === "videos" ? "default" : "outline"}
@@ -507,7 +508,7 @@ export default function RecentGenerations({
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground">
                             {item.service} {item.voice && `• ${item.voice}`}
-                          </div>{" "}
+                          </div>
                           <div className="flex gap-1">
                             {item.s3Key && (
                               <Button
@@ -546,14 +547,14 @@ export default function RecentGenerations({
                         </div>
                       </div>
                     </>
-                  )}
-                  {item.type === "voice" && "name" in item && (
+                  )}{" "}
+                  {item.type === "voice" && "text" in item && (
                     <>
                       <div className="mb-2 flex items-start justify-between">
                         <div className="flex items-center gap-2">
-                          <Mic className="h-4 w-4" />
+                          <Music className="h-4 w-4" />
                           <Badge variant="secondary" className="text-xs">
-                            {item.type}
+                            Sound Effects
                           </Badge>
                         </div>
                         <span className="text-xs text-muted-foreground">
@@ -563,11 +564,13 @@ export default function RecentGenerations({
                         </span>
                       </div>
                       <div>
-                        <p className="mb-2 text-sm font-medium">{item.name}</p>
+                        <p className="mb-2 line-clamp-2 text-sm font-medium">
+                          {item.text ?? "Generated Sound Effect"}
+                        </p>
                         <div className="flex items-center justify-between">
                           <div className="text-xs text-muted-foreground">
-                            {item.service}
-                          </div>{" "}
+                            {item.service} {item.voice && `• ${item.voice}`}
+                          </div>
                           <div className="flex gap-1">
                             {item.s3Key && (
                               <Button
@@ -590,7 +593,7 @@ export default function RecentGenerations({
                                 onClick={() =>
                                   downloadFile(
                                     item.s3Key!,
-                                    `voice-${item.id}.mp3`,
+                                    `sound-effect-${item.id}.mp3`,
                                   )
                                 }
                                 disabled={downloadingFiles.has(item.s3Key)}

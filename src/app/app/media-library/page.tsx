@@ -25,9 +25,10 @@ export default async function MediaLibraryPage() {
     }[];
     voices: {
       id: string;
-      name: string;
-      service: string;
+      text: string | null;
+      voice: string | null;
       s3Key: string | null;
+      service: string;
       createdAt: Date;
     }[];
     videos: {
@@ -73,11 +74,12 @@ export default async function MediaLibraryPage() {
           createdAt: true,
         },
       }),
-      // All audio clips (voice & sound effects)
+      // All audio clips (speech synthesis: styletts2 & seedvc only)
       db.generatedAudioClip.findMany({
         where: {
           userId: userId,
           failed: false,
+          service: { in: ["styletts2", "seedvc"] },
         },
         orderBy: { createdAt: "desc" },
         select: {
@@ -89,15 +91,20 @@ export default async function MediaLibraryPage() {
           createdAt: true,
         },
       }),
-      // All user voices
-      db.userVoice.findMany({
-        where: { userId: userId },
+      // All voices (sound effects: make-an-audio only)
+      db.generatedAudioClip.findMany({
+        where: {
+          userId: userId,
+          failed: false,
+          service: "make-an-audio",
+        },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          name: true,
-          service: true,
+          text: true,
+          voice: true,
           s3Key: true,
+          service: true,
           createdAt: true,
         },
       }),

@@ -64,7 +64,7 @@ export function ModelSelect({
       <CardContent className="pt-6 h-full">
         <div className="flex items-center justify-between gap-2 mb-4">
           <div className="flex items-center gap-2 w-full transition-opacity duration-200">
-            <div className="bg-primary p-2 rounded-full">
+            <div className="bg-primary dark:bg-black dark:border p-2 rounded-full">
               <div
                 className="hover:opacity-80"
               >

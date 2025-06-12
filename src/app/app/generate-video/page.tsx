@@ -52,7 +52,7 @@ export default function VideoGenerator() {
   });
   const [videoMode, setVideoMode] = useState<
     "text-to-video" | "image-to-video"
-  >("image-to-video");
+  >("text-to-video");
   const pollingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const generationContextRef = useRef<{
     prompt: string;
@@ -98,13 +98,28 @@ export default function VideoGenerator() {
       ...settings,
     }));
   };
-
   const handleModeChange = (mode: "text-to-video" | "image-to-video") => {
     setVideoMode(mode);
     // Clear image when switching to text-to-video mode
     if (mode === "text-to-video") {
       setImage(null);
       setImagePreview(null);
+    }
+
+    // Update the API endpoint based on the new mode
+    // Get current model from selectedApiEndpoint to determine which model is selected
+    if (selectedApiEndpoint.includes("ltx-video")) {
+      const newEndpoint =
+        mode === "text-to-video"
+          ? "fal-ai/ltx-video-13b-distilled"
+          : "fal-ai/ltx-video-13b-distilled/image-to-video";
+      setSelectedApiEndpoint(newEndpoint);
+    } else if (selectedApiEndpoint.includes("kling-video")) {
+      const newEndpoint =
+        mode === "text-to-video"
+          ? "fal-ai/kling-video/v1.6/pro/text-to-video"
+          : "fal-ai/kling-video/v1.6/pro/image-to-video";
+      setSelectedApiEndpoint(newEndpoint);
     }
   };
   const fetchResult = async (id: string): Promise<VideoResponse> => {
@@ -173,16 +188,7 @@ export default function VideoGenerator() {
                       "Failed to save video to database:",
                       errorData,
                     );
-
-                    // Handle insufficient credits error
-                    if (saveResponse.status === 402) {
-                      setError(
-                        errorData.error ??
-                          "Insufficient credits for video generation",
-                      );
-                    } else {
-                      setError("Failed to save video to database");
-                    }
+                    setError("Failed to save video to database");
                   } catch {
                     setError("Failed to save video to database");
                   }
@@ -259,8 +265,43 @@ export default function VideoGenerator() {
 
     setIsGenerating(true);
     setError(null);
-
     try {
+      // Check credits before starting video generation
+      setProgress("Checking credits...");
+      console.log("Starting credit check...");
+      const creditsResponse = await fetch("/api/check-video-credits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Credit check response status:", creditsResponse.status);
+
+      if (!creditsResponse.ok) {
+        console.error(
+          "Credit check failed with status:",
+          creditsResponse.status,
+        );
+        const errorData = (await creditsResponse.json()) as { error?: string };
+        console.error("Credit check error data:", errorData);
+
+        if (creditsResponse.status === 402) {
+          setError(
+            errorData.error ?? "Insufficient credits for video generation",
+          );
+        } else {
+          setError(errorData.error ?? "Failed to check credits");
+        }
+        setIsGenerating(false);
+        setProgress("");
+        return;
+      }
+      const creditsData = (await creditsResponse.json()) as {
+        hasCredits: boolean;
+        credits: number;
+      };
+      console.log("Credits check successful:", creditsData);
       let imageUrl: string | undefined; // Upload image only for image-to-video mode
       if (videoMode === "image-to-video" && image) {
         setProgress("Uploading image...");
@@ -318,7 +359,22 @@ export default function VideoGenerator() {
       void checkStatus(request_id);
     } catch (err) {
       console.error("Error submitting request:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate video");
+
+      // Handle specific error types
+      if (err instanceof Error) {
+        if (err.name === "TimeoutError" || err.message.includes("timeout")) {
+          setError("Credit check timed out. Please try again.");
+        } else if (err.message.includes("fetch")) {
+          setError(
+            "Network error during credit check. Please check your connection.",
+          );
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError("Failed to generate video");
+      }
+
       setIsGenerating(false);
       setProgress("");
     }
@@ -423,7 +479,7 @@ export default function VideoGenerator() {
             // Error state
             <Card className="w-full max-w-2xl border-destructive">
               <CardContent className="flex h-96 items-center justify-center">
-                <div className="text-center text-destructive">
+                <div className="text-center text-destructive dark:text-red-500">
                   <p className="text-lg font-medium">Something went wrong</p>
                   <p className="mt-2 text-sm">{error}</p>
                   <Button

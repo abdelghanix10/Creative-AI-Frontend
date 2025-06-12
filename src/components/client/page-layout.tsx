@@ -54,6 +54,8 @@ export function PageLayout({
     const checkScreenSize = () => {
       setMobileScreen(window.innerWidth < 1024);
     };
+    // Initial check on component mount
+    checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, [setMobileScreen]);
@@ -69,16 +71,16 @@ export function PageLayout({
       </div>
 
       {isMobileScreen && isMobileDrawerOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50" />
+        <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70" />
       )}
 
       <div
         className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${isMobileDrawerOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="shadow-log relative h-full w-64 bg-white">
+        <div className="shadow-log relative h-full w-64 bg-background">
           <button
             onClick={toggleMobileDrawer}
-            className="absolute right-4 top-6 rounded-full p-2 text-gray-500 hover:bg-red-100 hover:text-red-600"
+            className="absolute right-4 top-6 rounded-full p-2 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
           >
             <IoClose />
           </button>
@@ -87,18 +89,18 @@ export function PageLayout({
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="border-b border-gray-200">
+        <div className="border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex h-16 items-center px-4">
               {isMobileScreen && (
                 <button
                   onClick={toggleMobileDrawer}
-                  className="mr-3 rounded-lg hover:bg-gray-100 lg:hidden"
+                  className="mr-3 rounded-lg text-foreground hover:bg-muted lg:hidden"
                 >
                   <PanelLeft className="h-6 w-6" />
                 </button>
               )}
-              <h1 className="text-xl font-bold antialiased sm:text-2xl">
+              <h1 className="text-base font-bold text-foreground antialiased md:text-xl">
                 {title}
               </h1>
 
@@ -106,7 +108,7 @@ export function PageLayout({
                 <div className="ml-4 flex items-center">
                   {tabs.map((tab) => (
                     <Link
-                      className={`mr-2 rounded-full px-3 py-1 text-sm transition-colors duration-200 ${pathname === tab.path ? "bg-black text-white" : "text-gray-500 hover:text-gray-700"}`}
+                      className={`mr-2 rounded-full px-3 py-1 text-xs transition-colors duration-200 md:text-sm ${pathname === tab.path ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                       key={tab.path}
                       href={tab.path}
                     >
@@ -116,12 +118,12 @@ export function PageLayout({
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-gray-600">
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex w-min items-center justify-between gap-1 md:w-fit">
+                <Sparkles className="text-foreground" />
+                <span className="text-xs font-medium text-muted-foreground md:text-sm">
                   Credits: {creditsLoading ? "..." : (credits ?? "0")}
                 </span>
-                <Sparkles />
               </div>
               <Button
                 variant="ghost"

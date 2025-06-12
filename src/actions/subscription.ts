@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { stripe } from "~/lib/stripe";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
@@ -133,7 +132,6 @@ export async function updateUserCreditsBasedOnPlan() {
 
   // Get current subscription to determine plan
   const subscription = await getUserSubscription(user.id);
-
   if (!subscription) {
     // No active subscription, use Free plan credits
     const freePlan = await db.subscriptionPlan.findUnique({
@@ -147,12 +145,416 @@ export async function updateUserCreditsBasedOnPlan() {
       });
     }
   } else {
-    // Update credits based on subscription plan
+    // Add subscription plan credits to existing credits
     await db.user.update({
       where: { id: user.id },
-      data: { credits: subscription.plan.credits },
+      data: { credits: user.credits + subscription.plan.credits },
     });
   }
 
   return { success: true };
+}
+
+// Create subscription record when payment is successful
+export async function createSubscription(
+  userId: string,
+  planId: string,
+  stripeSubscriptionId: string,
+  stripePriceId: string,
+  interval: "monthly" | "yearly",
+  currentPeriodStart: Date,
+  currentPeriodEnd: Date,
+) {
+  try {
+    const subscription = await db.subscription.create({
+      data: {
+        userId,
+        planId,
+        status: "active",
+        currentPeriodStart,
+        currentPeriodEnd,
+        stripeSubscriptionId,
+        stripePriceId,
+        interval,
+      },
+      include: { plan: true },
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error("Error creating subscription:", error);
+    throw new Error("Failed to create subscription");
+  }
+}
+
+// Update subscription status and details
+export async function updateSubscription(
+  stripeSubscriptionId: string,
+  data: {
+    status?: string;
+    currentPeriodStart?: Date;
+    currentPeriodEnd?: Date;
+    cancelAtPeriodEnd?: boolean;
+    planId?: string;
+  },
+) {
+  try {
+    const subscription = await db.subscription.update({
+      where: { stripeSubscriptionId },
+      data,
+      include: { plan: true },
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error("Error updating subscription:", error);
+    throw new Error("Failed to update subscription");
+  }
+}
+
+// Cancel subscription
+export async function cancelSubscription(userId: string, immediately = false) {
+  const session = await auth();
+  if (!session?.user.id || session.user.id !== userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const subscription = await getUserSubscription(userId);
+  if (!subscription) {
+    throw new Error("No active subscription found");
+  }
+
+  try {
+    if (immediately) {
+      // Cancel immediately
+      await stripe.subscriptions.cancel(subscription.stripeSubscriptionId!);
+
+      await db.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: "canceled",
+          cancelAtPeriodEnd: false,
+        },
+      });
+    } else {
+      // Cancel at period end
+      await stripe.subscriptions.update(subscription.stripeSubscriptionId!, {
+        cancel_at_period_end: true,
+      });
+
+      await db.subscription.update({
+        where: { id: subscription.id },
+        data: { cancelAtPeriodEnd: true },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error canceling subscription:", error);
+    throw new Error("Failed to cancel subscription");
+  }
+}
+
+// Create invoice record
+export async function createInvoice(
+  userId: string,
+  subscriptionId: string | null,
+  stripeInvoiceId: string,
+  amount: number,
+  currency = "usd",
+  status: string,
+  description?: string,
+  invoiceNumber?: string,
+  invoiceUrl?: string,
+  dueDate?: Date,
+) {
+  try {
+    const invoice = await db.invoice.create({
+      data: {
+        userId,
+        subscriptionId,
+        stripeInvoiceId,
+        amount: amount / 100, // Convert cents to dollars
+        currency,
+        status,
+        description,
+        invoiceNumber,
+        invoiceUrl,
+        dueDate,
+      },
+    });
+
+    return invoice;
+  } catch (error) {
+    console.error("Error creating invoice:", error);
+    throw new Error("Failed to create invoice");
+  }
+}
+
+// Update invoice status
+export async function updateInvoice(
+  stripeInvoiceId: string,
+  data: {
+    status?: string;
+    paidAt?: Date;
+    amount?: number;
+    description?: string;
+    invoiceUrl?: string;
+  },
+) {
+  try {
+    const invoice = await db.invoice.update({
+      where: { stripeInvoiceId },
+      data: {
+        ...data,
+        amount: data.amount ? data.amount / 100 : undefined, // Convert cents to dollars
+      },
+    });
+
+    return invoice;
+  } catch (error) {
+    console.error("Error updating invoice:", error);
+    throw new Error("Failed to update invoice");
+  }
+}
+
+// Create payment record
+export async function createPayment(
+  userId: string,
+  invoiceId: string | null,
+  stripePaymentId: string,
+  amount: number,
+  currency = "usd",
+  status: string,
+  paymentMethod?: string,
+  description?: string,
+) {
+  try {
+    const payment = await db.payment.create({
+      data: {
+        userId,
+        invoiceId,
+        stripePaymentId,
+        amount: amount / 100, // Convert cents to dollars
+        currency,
+        status,
+        paymentMethod,
+        description,
+      },
+    });
+
+    return payment;
+  } catch (error) {
+    console.error("Error creating payment:", error);
+    throw new Error("Failed to create payment");
+  }
+}
+
+// Update payment status
+export async function updatePayment(
+  stripePaymentId: string,
+  data: {
+    status?: string;
+    refunded?: boolean;
+    refundedAmount?: number;
+  },
+) {
+  try {
+    const payment = await db.payment.update({
+      where: { stripePaymentId },
+      data: {
+        ...data,
+        refundedAmount: data.refundedAmount
+          ? data.refundedAmount / 100
+          : undefined,
+      },
+    });
+
+    return payment;
+  } catch (error) {
+    console.error("Error updating payment:", error);
+    throw new Error("Failed to update payment");
+  }
+}
+
+// Get subscription by Stripe ID
+export async function getSubscriptionByStripeId(stripeSubscriptionId: string) {
+  try {
+    const subscription = await db.subscription.findFirst({
+      where: { stripeSubscriptionId },
+      include: { plan: true, user: true },
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error("Error fetching subscription by Stripe ID:", error);
+    return null;
+  }
+}
+
+// Sync subscription plans from Stripe (admin function)
+export async function syncSubscriptionPlans() {
+  const session = await auth();
+  if (!session?.user.id) {
+    throw new Error("User not authenticated");
+  }
+
+  // This would be an admin-only function in a real app
+  // For now, we'll create default plans if they don't exist
+  try {
+    const existingPlans = await db.subscriptionPlan.findMany();
+
+    if (existingPlans.length === 0) {
+      const defaultPlans = [
+        {
+          name: "Free",
+          displayName: "Free Plan",
+          description: "Get started with basic features",
+          credits: 100,
+          price: 0,
+          yearlyPrice: 0,
+          features: JSON.stringify([
+            "100 credits per month",
+            "Basic AI features",
+            "Standard support",
+          ]),
+          isActive: true,
+        },
+        {
+          name: "Lite",
+          displayName: "Lite Plan",
+          description: "Perfect for personal use",
+          credits: 1000,
+          price: 9.99,
+          yearlyPrice: 99.99,
+          features: JSON.stringify([
+            "1,000 credits per month",
+            "All AI features",
+            "Priority support",
+            "Advanced templates",
+          ]),
+          isActive: true,
+        },
+        {
+          name: "Pro",
+          displayName: "Pro Plan",
+          description: "Best for professionals",
+          credits: 5000,
+          price: 29.99,
+          yearlyPrice: 299.99,
+          features: JSON.stringify([
+            "5,000 credits per month",
+            "All AI features",
+            "Premium support",
+            "Custom templates",
+            "API access",
+          ]),
+          isActive: true,
+        },
+      ];
+
+      await db.subscriptionPlan.createMany({
+        data: defaultPlans,
+      });
+
+      return { message: "Default plans created successfully" };
+    }
+
+    return { message: "Plans already exist" };
+  } catch (error) {
+    console.error("Error syncing subscription plans:", error);
+    throw new Error("Failed to sync subscription plans");
+  }
+}
+
+// Get user's billing history (invoices and payments)
+export async function getUserBillingHistory(userId: string, limit = 20) {
+  try {
+    const [invoices, payments] = await Promise.all([
+      db.invoice.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+      db.payment.findMany({
+        where: { userId },
+        include: { invoice: true },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+    ]);
+
+    return { invoices, payments };
+  } catch (error) {
+    console.error("Error fetching billing history:", error);
+    throw new Error("Failed to fetch billing history");
+  }
+}
+
+// Process subscription renewal
+export async function processSubscriptionRenewal(stripeSubscriptionId: string) {
+  try {
+    const subscription = await getSubscriptionByStripeId(stripeSubscriptionId);
+
+    if (!subscription) {
+      throw new Error("Subscription not found");
+    }
+
+    // Add credits to user's account
+    await db.user.update({
+      where: { id: subscription.userId },
+      data: {
+        credits: {
+          increment: subscription.plan.credits,
+        },
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error processing subscription renewal:", error);
+    throw new Error("Failed to process subscription renewal");
+  }
+}
+
+// Get subscription metrics (admin function)
+export async function getSubscriptionMetrics() {
+  const session = await auth();
+  if (!session?.user.id) {
+    throw new Error("User not authenticated");
+  }
+
+  try {
+    const [
+      totalSubscriptions,
+      activeSubscriptions,
+      canceledSubscriptions,
+      totalRevenue,
+      planDistribution,
+    ] = await Promise.all([
+      db.subscription.count(),
+      db.subscription.count({ where: { status: "active" } }),
+      db.subscription.count({ where: { status: "canceled" } }),
+      db.payment.aggregate({
+        where: { status: "succeeded" },
+        _sum: { amount: true },
+      }),
+      db.subscription.groupBy({
+        by: ["planId"],
+        where: { status: "active" },
+        _count: { planId: true },
+      }),
+    ]);
+
+    return {
+      totalSubscriptions,
+      activeSubscriptions,
+      canceledSubscriptions,
+      totalRevenue: totalRevenue._sum.amount ?? 0,
+      planDistribution,
+    };
+  } catch (error) {
+    console.error("Error fetching subscription metrics:", error);
+    throw new Error("Failed to fetch subscription metrics");
+  }
 }
