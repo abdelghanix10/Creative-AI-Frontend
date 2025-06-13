@@ -18,6 +18,7 @@ import Image from "next/image";
 import { ImageDialog } from "./ImageDialog";
 import { VideoDialog } from "../media-library/VideoDialog";
 import { VideoCard } from "../video/VideoCard";
+import { useAudioStore } from "~/stores/audio-store";
 
 interface RecentImage {
   id: string;
@@ -90,7 +91,6 @@ export default function RecentGenerations({
   videos,
 }: RecentGenerationsProps) {
   const [activeTab, setActiveTab] = useState<Tab>("all");
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
     new Set(),
   );
@@ -107,6 +107,9 @@ export default function RecentGenerations({
   const [videoPreviewUrls, setVideoPreviewUrls] = useState<Map<string, string>>(
     new Map(),
   );
+
+  // Audio store
+  const { playAudio, currentAudio, isPlaying } = useAudioStore();
   // Load image preview URLs when component mounts
   useEffect(() => {
     const loadImagePreviews = async () => {
@@ -189,11 +192,17 @@ export default function RecentGenerations({
 
     void loadVideoPreviews();
   }, [videos]);
-
-  const playAudio = async (s3Key: string, id: string) => {
-    if (playingAudio === id) {
-      setPlayingAudio(null);
-      return;
+  const handlePlayAudio = async (
+    s3Key: string,
+    id: string,
+    text: string | null,
+    voice: string | null,
+    service: string,
+    createdAt: Date,
+  ) => {
+    // Check if this audio is already playing
+    if (currentAudio?.id === id && isPlaying) {
+      return; // Let the playbar handle pause
     }
 
     try {
@@ -208,18 +217,22 @@ export default function RecentGenerations({
 
       if (response.ok) {
         const data = (await response.json()) as { downloadUrl: string };
-        const audio = new Audio(data.downloadUrl);
 
-        setPlayingAudio(id);
+        // Create audio info object for the store
+        const audioInfo = {
+          id,
+          title: text ?? "Generated Audio",
+          voice,
+          audioUrl: data.downloadUrl,
+          service,
+          createdAt: createdAt.toUTCString(),
+        };
 
-        audio.onended = () => setPlayingAudio(null);
-        audio.onerror = () => setPlayingAudio(null);
-
-        await audio.play();
+        // Use the audio store to play
+        playAudio(audioInfo);
       }
     } catch (error) {
       console.error("Error playing audio:", error);
-      setPlayingAudio(null);
     }
   };
 
@@ -502,6 +515,7 @@ export default function RecentGenerations({
                         </span>
                       </div>
                       <div>
+                        {" "}
                         <p className="mb-2 line-clamp-2 text-sm font-medium">
                           {item.text ?? "Generated Audio"}
                         </p>
@@ -514,10 +528,21 @@ export default function RecentGenerations({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => playAudio(item.s3Key!, item.id)}
-                                disabled={playingAudio === item.id}
+                                onClick={() =>
+                                  handlePlayAudio(
+                                    item.s3Key!,
+                                    item.id,
+                                    item.text,
+                                    item.voice,
+                                    item.service,
+                                    item.createdAt,
+                                  )
+                                }
+                                disabled={
+                                  currentAudio?.id === item.id && isPlaying
+                                }
                               >
-                                {playingAudio === item.id ? (
+                                {currentAudio?.id === item.id && isPlaying ? (
                                   <Pause className="h-3 w-3" />
                                 ) : (
                                   <Play className="h-3 w-3" />
@@ -562,8 +587,9 @@ export default function RecentGenerations({
                             addSuffix: true,
                           })}
                         </span>
-                      </div>
+                      </div>{" "}
                       <div>
+                        {" "}
                         <p className="mb-2 line-clamp-2 text-sm font-medium">
                           {item.text ?? "Generated Sound Effect"}
                         </p>
@@ -576,10 +602,21 @@ export default function RecentGenerations({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => playAudio(item.s3Key!, item.id)}
-                                disabled={playingAudio === item.id}
+                                onClick={() =>
+                                  handlePlayAudio(
+                                    item.s3Key!,
+                                    item.id,
+                                    item.text,
+                                    item.voice,
+                                    item.service,
+                                    item.createdAt,
+                                  )
+                                }
+                                disabled={
+                                  currentAudio?.id === item.id && isPlaying
+                                }
                               >
-                                {playingAudio === item.id ? (
+                                {currentAudio?.id === item.id && isPlaying ? (
                                   <Pause className="h-3 w-3" />
                                 ) : (
                                   <Play className="h-3 w-3" />
@@ -648,7 +685,6 @@ export default function RecentGenerations({
           </div>
         )}
       </CardContent>
-
       <ImageDialog
         image={selectedImage}
         isOpen={isImageDialogOpen}

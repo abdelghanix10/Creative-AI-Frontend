@@ -1,10 +1,10 @@
 "use client";
 
 import { IoDownloadOutline, IoPlay } from "react-icons/io5";
-import { HistoryItem as HistoryItemType } from "~/lib/history";
+import type { HistoryItem as HistoryItemType } from "~/lib/history";
 import { useAudioStore } from "~/stores/audio-store";
-import { useVoiceStore, Voice } from "~/stores/voice-store";
-import { ServiceType } from "~/types/services";
+import { useVoiceStore, type Voice } from "~/stores/voice-store";
+import type { ServiceType } from "~/types/services";
 
 export function HistoryPanel({
   service,
@@ -33,6 +33,7 @@ export function HistoryPanel({
         voice: item.voice,
         audioUrl: item.audioUrl,
         service: item.service,
+        createdAt: item.createdAt.toUTCString(),
       });
     }
   };
@@ -79,7 +80,7 @@ export function HistoryPanel({
 
             // Show no results found when filtered results are empty
             return filteredGroups.length > 0 ? (
-              filteredGroups.map(([date, items], groupIndex) => (
+              filteredGroups.map(([date, items]) => (
                 <div key={date}>
                   <div className="sticky top-0 z-10 my-2 flex w-full justify-center bg-background py-1 dark:bg-background">
                     <div className="rounded-full bg-gray-100 px-3 py-1 text-xs dark:bg-gray-800 dark:text-gray-200">
@@ -130,8 +131,8 @@ function HistoryItem({
   setHoveredItem: (id: string | null) => void;
   onPlay: (item: HistoryItemType) => void;
 }) {
-  const voiceUsed = voices.find((voice) => voice.id === item.voice) ||
-    voices[0] || {
+  const voiceUsed = voices.find((voice) => voice.id === item.voice) ??
+    voices[0] ?? {
       id: "unknown",
       name: "Unknown Voice",
       gradientColors: "#gray-500",

@@ -23,6 +23,7 @@ import Image from "next/image";
 import { ImageDialog } from "../dashboard/ImageDialog";
 import { VideoCard } from "../video/VideoCard";
 import { VideoDialog } from "../media-library/VideoDialog";
+import { useAudioStore } from "~/stores/audio-store";
 
 interface ExploreImage {
   id: string;
@@ -86,7 +87,7 @@ export default function ExploreGallery({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
-  // State for previews and playback
+  // State for previews and downloads
   const [imagePreviewUrls, setImagePreviewUrls] = useState<Map<string, string>>(
     new Map(),
   );
@@ -96,7 +97,6 @@ export default function ExploreGallery({
   const [loadingPreviews, setLoadingPreviews] = useState<Set<string>>(
     new Set(),
   );
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(
     new Set(),
   );
@@ -106,6 +106,9 @@ export default function ExploreGallery({
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<ExploreVideo | null>(null);
   const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false);
+
+  // Audio store
+  const { playAudio, currentAudio, isPlaying } = useAudioStore();
 
   // Load image preview URLs when component mounts
   useEffect(() => {
@@ -186,11 +189,16 @@ export default function ExploreGallery({
 
     void loadVideoPreviews();
   }, [videos]);
-
-  const playAudio = async (s3Key: string, id: string) => {
-    if (playingAudio === id) {
-      setPlayingAudio(null);
-      return;
+  const handlePlayAudio = async (
+    s3Key: string,
+    id: string,
+    text: string | null,
+    service: string,
+    createdAt: Date,
+  ) => {
+    // Check if this audio is already playing
+    if (currentAudio?.id === id && isPlaying) {
+      return; // Let the playbar handle pause
     }
 
     try {
@@ -203,15 +211,22 @@ export default function ExploreGallery({
       });
       if (response.ok) {
         const data = (await response.json()) as { downloadUrl: string };
-        const audio = new Audio(data.downloadUrl);
-        setPlayingAudio(id);
-        audio.onended = () => setPlayingAudio(null);
-        audio.onerror = () => setPlayingAudio(null);
-        await audio.play();
+
+        // Create audio info object for the store
+        const audioInfo = {
+          id,
+          title: text ?? "Sound Effect",
+          voice: null,
+          audioUrl: data.downloadUrl,
+          service,
+          createdAt: createdAt.toUTCString(),
+        };
+
+        // Use the audio store to play
+        playAudio(audioInfo);
       }
     } catch (error) {
       console.error("Error playing audio:", error);
-      setPlayingAudio(null);
     }
   };
 
@@ -689,23 +704,31 @@ export default function ExploreGallery({
                                   addSuffix: true,
                                 })}
                               </p>
-                            </div>
+                            </div>{" "}
                             {item.s3Key && (
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
                                   variant="outline"
                                   onClick={() =>
-                                    playAudio(item.s3Key!, item.id)
+                                    handlePlayAudio(
+                                      item.s3Key!,
+                                      item.id,
+                                      item.text,
+                                      item.service,
+                                      item.createdAt,
+                                    )
                                   }
                                   className="flex-1"
                                 >
-                                  {playingAudio === item.id ? (
+                                  {currentAudio?.id === item.id && isPlaying ? (
                                     <Pause className="mr-2 h-4 w-4" />
                                   ) : (
                                     <Play className="mr-2 h-4 w-4" />
                                   )}
-                                  {playingAudio === item.id ? "Pause" : "Play"}
+                                  {currentAudio?.id === item.id && isPlaying
+                                    ? "Pause"
+                                    : "Play"}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -759,18 +782,28 @@ export default function ExploreGallery({
                                       addSuffix: true,
                                     },
                                   )}
-                                </span>
+                                </span>{" "}
                                 <div className="flex gap-1">
                                   {item.s3Key && (
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() =>
-                                        playAudio(item.s3Key!, item.id)
+                                        handlePlayAudio(
+                                          item.s3Key!,
+                                          item.id,
+                                          item.text,
+                                          item.service,
+                                          item.createdAt,
+                                        )
                                       }
-                                      disabled={playingAudio === item.id}
+                                      disabled={
+                                        currentAudio?.id === item.id &&
+                                        isPlaying
+                                      }
                                     >
-                                      {playingAudio === item.id ? (
+                                      {currentAudio?.id === item.id &&
+                                      isPlaying ? (
                                         <Pause className="h-3 w-3" />
                                       ) : (
                                         <Play className="h-3 w-3" />

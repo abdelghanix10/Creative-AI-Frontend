@@ -1,7 +1,7 @@
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { getPresignedUrl } from "~/lib/s3";
-import { ServiceType } from "~/types/services";
+import type { ServiceType } from "~/types/services";
 
 export type HistoryItem = {
   id: string;
@@ -11,6 +11,7 @@ export type HistoryItem = {
   time: string;
   date: string;
   service: ServiceType;
+  createdAt: Date;
 };
 
 export async function getHistoryItems(
@@ -78,6 +79,7 @@ export async function getHistoryItems(
           date,
           time,
           service,
+          createdAt: clip.createdAt,
         };
       }),
     );

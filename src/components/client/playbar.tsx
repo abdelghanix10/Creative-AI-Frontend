@@ -134,7 +134,7 @@ export default function Playbar() {
 
                   <div className="flex items-center">
                     <IoTimeOutline className="mr-1 h-3 w-3" />
-                    <span>{currentAudio?.createdAt || "Just now"}</span>
+                    <span>{currentAudio?.createdAt ?? "Just now"}</span>
                   </div>
                 </div>
               </div>
@@ -205,7 +205,7 @@ export default function Playbar() {
           <div className="flex h-full md:hidden">
             <div className="flex flex-1 items-center px-4">
               <div className="flex w-full flex-col gap-1">
-                <p className="truncate text-sm text-foreground">
+                <p className="line-clamp-1 text-sm text-foreground">
                   {currentAudio?.title}
                 </p>
 
@@ -224,7 +224,7 @@ export default function Playbar() {
                   )}
                   <div className="flex items-center">
                     <IoTimeOutline className="mr-1 h-3 w-3" />
-                    <span>{currentAudio?.createdAt || "Just now"}</span>
+                    <span>{currentAudio?.createdAt ?? "Just now"}</span>
                   </div>
                 </div>
               </div>

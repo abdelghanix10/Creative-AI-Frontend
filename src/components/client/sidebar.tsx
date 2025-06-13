@@ -16,7 +16,7 @@ import {
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { IoPinOutline } from "react-icons/io5";
 import { NavUser } from "~/components/client/nav-user";
 
@@ -24,34 +24,13 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
   const pathname = usePathname();
   const [isPinned, setIsPinned] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const isExpanded = isMobile || isPinned || isHovered;
 
   const session = useSession({
     required: false,
-    refetchInterval: 0,
-    refetchOnWindowFocus: false,
   });
   const user = session.data?.user;
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        accountMenuRef.current &&
-        !accountMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowAccountMenu(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   return (
     <div

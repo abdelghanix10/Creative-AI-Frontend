@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ServiceType } from "~/types/services";
 import Sidebar from "./sidebar";
 import { useUIStore } from "~/stores/ui-store";
@@ -49,6 +49,11 @@ export function PageLayout({
   const { currentAudio } = useAudioStore();
   const { theme, setTheme } = useTheme();
   const { credits, loading: creditsLoading } = useUserCredits();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -71,7 +76,10 @@ export function PageLayout({
       </div>
 
       {isMobileScreen && isMobileDrawerOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70" />
+        <div
+          className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70"
+          onClick={toggleMobileDrawer}
+        />
       )}
 
       <div
@@ -131,8 +139,12 @@ export function PageLayout({
                 onClick={toggleTheme}
                 className="rounded-full"
               >
-                {theme === "dark" ? (
-                  <Sun className="size-[18px]" />
+                {mounted ? (
+                  theme === "dark" ? (
+                    <Sun className="size-[18px]" />
+                  ) : (
+                    <Moon className="size-[18px]" />
+                  )
                 ) : (
                   <Moon className="size-[18px]" />
                 )}
