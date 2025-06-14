@@ -17,18 +17,22 @@ export async function GET() {
       orderBy: {
         price: "asc",
       },
-    });
-
-    // Transform the data to match the expected interface
+    }); // Transform the data to match the expected interface
     const transformedPlans = plans.map((plan) => ({
       id: plan.id,
-      name: plan.displayName,
+      name: plan.name,
+      displayName: plan.displayName,
       description: plan.description,
+      credits: plan.credits,
       price: Math.round(plan.price * 100), // Convert to cents
+      yearlyPrice: plan.yearlyPrice
+        ? Math.round(plan.yearlyPrice * 100)
+        : undefined,
       interval: "month" as const,
       features: JSON.parse(plan.features) as string[],
       stripePriceId: plan.stripePriceId,
-      active: plan.isActive,
+      stripeYearlyPriceId: plan.stripeYearlyPriceId,
+      isActive: plan.isActive,
     }));
 
     return NextResponse.json({
@@ -47,33 +51,44 @@ export async function POST(request: NextRequest) {
   try {
     // Check if user is admin (this also validates authentication)
     await requireAdmin();
-
     const body = (await request.json()) as {
       name: string;
+      displayName?: string;
       description?: string;
+      credits?: number;
       price: number;
-      interval: "month" | "year";
+      yearlyPrice?: number;
       features?: string[];
+      isActive?: boolean;
       stripePriceId?: string;
     };
 
-    const { name, description, price, interval, features, stripePriceId } =
-      body;
+    const {
+      name,
+      displayName,
+      description,
+      credits,
+      price,
+      yearlyPrice,
+      features,
+      isActive,
+      stripePriceId,
+    } = body;
 
     // Validate required fields
-    if (!name || !price || !interval) {
+    if (!name || !price) {
       return NextResponse.json(
-        { error: "Name, price, and interval are required" },
+        { error: "Name and price are required" },
         { status: 400 },
       );
-    }
+    } // Create or get Stripe prices if stripePriceId is not provided
+    let stripeMonthlyPrice: Stripe.Price;
+    let stripeYearlyPrice: Stripe.Price | null = null;
 
-    // Create or get Stripe price if stripePriceId is not provided
-    let stripePrice: Stripe.Price;
     if (stripePriceId) {
       // Verify the price exists in Stripe
       try {
-        stripePrice = await stripe.prices.retrieve(stripePriceId);
+        stripeMonthlyPrice = await stripe.prices.retrieve(stripePriceId);
       } catch {
         return NextResponse.json(
           { error: "Invalid Stripe price ID" },
@@ -89,15 +104,27 @@ export async function POST(request: NextRequest) {
           description: description ?? undefined,
         });
 
-        // Then create a price
-        stripePrice = await stripe.prices.create({
+        // Create monthly price
+        stripeMonthlyPrice = await stripe.prices.create({
           unit_amount: price,
           currency: "usd",
           recurring: {
-            interval: interval,
+            interval: "month",
           },
           product: product.id,
         });
+
+        // Create yearly price if yearlyPrice is provided
+        if (yearlyPrice && yearlyPrice > 0) {
+          stripeYearlyPrice = await stripe.prices.create({
+            unit_amount: yearlyPrice,
+            currency: "usd",
+            recurring: {
+              interval: "year",
+            },
+            product: product.id,
+          });
+        }
       } catch (stripeError) {
         console.error("Failed to create Stripe price:", stripeError);
         return NextResponse.json(
@@ -105,21 +132,19 @@ export async function POST(request: NextRequest) {
           { status: 500 },
         );
       }
-    }
-
-    // Create the plan in database
+    } // Create the plan in database
     const plan = await db.subscriptionPlan.create({
       data: {
         name: name.toLowerCase().replace(/\s+/g, "_"), // Create a slug-like name
-        displayName: name,
+        displayName: displayName ?? name,
         description: description ?? null,
-        credits: 0, // Default credits, can be updated later
+        credits: credits ?? 0,
         price: price / 100, // Convert from cents to dollars
-        yearlyPrice: interval === "year" ? price / 100 : null,
+        yearlyPrice: yearlyPrice ? yearlyPrice / 100 : null,
         features: JSON.stringify(features ?? []),
-        stripePriceId: stripePrice.id,
-        stripeYearlyPriceId: interval === "year" ? stripePrice.id : null,
-        isActive: true,
+        stripePriceId: stripeMonthlyPrice.id,
+        stripeYearlyPriceId: stripeYearlyPrice?.id ?? null,
+        isActive: isActive ?? true,
       },
     });
 

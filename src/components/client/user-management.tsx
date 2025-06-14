@@ -52,6 +52,10 @@ export function UserManagement() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [userToDeactivate, setUserToDeactivate] = useState<UserData | null>(
+    null,
+  );
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
   const fetchUsers = async (showLoading = true) => {
     try {
       if (showLoading) {
@@ -101,9 +105,27 @@ export function UserManagement() {
       setIsLoading(false);
     }
   };
-
   const toggleUserStatus = async (userId: string, isActive: boolean) => {
     await updateUser(userId, { isActive });
+  };
+
+  const handleToggleUserStatus = async (user: UserData) => {
+    if (user.isActive) {
+      // Show confirmation dialog for deactivation
+      setUserToDeactivate(user);
+      setIsDeactivateDialogOpen(true);
+    } else {
+      // Activate user immediately
+      await toggleUserStatus(user.id, true);
+    }
+  };
+
+  const confirmDeactivateUser = async () => {
+    if (userToDeactivate) {
+      await toggleUserStatus(userToDeactivate.id, false);
+      setIsDeactivateDialogOpen(false);
+      setUserToDeactivate(null);
+    }
   };
 
   const filteredUsers = users.filter((user) => {
@@ -297,8 +319,8 @@ export function UserManagement() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                      <div className="space-y-1 text-right">
+                    <div className="flex items-center space-x-4 w-48">
+                      <div className="space-y-1 text-left flex flex-col gap-2">
                         {user.subscription ? (
                           <>
                             <div className="flex items-center gap-2">
@@ -313,17 +335,21 @@ export function UserManagement() {
                                 <Badge variant="secondary">ADMIN</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {user.subscription.plan ??
-                                user.subscriptionTier ??
-                                "Unknown Plan"}
-                            </p>
-                            {user.subscription.currentPeriodEnd && (
+                            <div className="flex items-center gap-2">
                               <p className="text-xs text-muted-foreground">
-                                Until{" "}
-                                {formatDate(user.subscription.currentPeriodEnd)}
+                                {user.subscription.plan ??
+                                  user.subscriptionTier ??
+                                  "Unknown Plan"}
                               </p>
-                            )}
+                              {user.subscription.currentPeriodEnd && (
+                                <p className="text-xs text-muted-foreground">
+                                  {"- "}Until{" "}
+                                  {formatDate(
+                                    user.subscription.currentPeriodEnd,
+                                  )}
+                                </p>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <>
@@ -350,12 +376,11 @@ export function UserManagement() {
                       onClick={() => handleEditUser(user)}
                     >
                       <Edit className="h-4 w-4" />
-                    </Button>
-
+                    </Button>{" "}
                     <Button
                       variant={user.isActive ? "destructive" : "default"}
                       size="sm"
-                      onClick={() => toggleUserStatus(user.id, !user.isActive)}
+                      onClick={() => handleToggleUserStatus(user)}
                       disabled={isLoading}
                     >
                       {user.isActive ? (
@@ -450,6 +475,60 @@ export function UserManagement() {
               disabled={isLoading}
             >
               Save Changes
+            </Button>{" "}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate User Confirmation Dialog */}
+      <Dialog
+        open={isDeactivateDialogOpen}
+        onOpenChange={setIsDeactivateDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deactivate User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to deactivate this user? They will lose
+              access to their account and all services.
+            </DialogDescription>
+          </DialogHeader>
+
+          {userToDeactivate && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                <strong>User:</strong>{" "}
+                {userToDeactivate.name ?? userToDeactivate.email}
+              </p>
+              <p className="text-sm">
+                <strong>Email:</strong> {userToDeactivate.email}
+              </p>
+              {userToDeactivate.subscription && (
+                <p className="text-sm">
+                  <strong>Subscription:</strong>{" "}
+                  {userToDeactivate.subscription.plan} (
+                  {userToDeactivate.subscription.status})
+                </p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeactivateDialogOpen(false);
+                setUserToDeactivate(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeactivateUser}
+              disabled={isLoading}
+            >
+              Deactivate User
             </Button>
           </DialogFooter>
         </DialogContent>

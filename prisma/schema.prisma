@@ -44,6 +44,8 @@ model User {
     isActive      Boolean   @default(true) // User account status
     stripeCustomerId String?
     stripeSubscriptionId String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
     sessions      Session[]
     generatedAudioClips GeneratedAudioClip[]
     userVoices    UserVoice[]

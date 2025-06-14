@@ -9,13 +9,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { subscriptionId: string } },
+  { params }: { params: Promise<{ subscriptionId: string }> },
 ) {
   try {
     // Check admin access
     await requireAdmin();
 
-    const { subscriptionId } = params;
+    const { subscriptionId } = await params;
 
     // Get the subscription from database
     const subscription = await db.subscription.findUnique({

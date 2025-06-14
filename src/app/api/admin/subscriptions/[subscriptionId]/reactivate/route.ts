@@ -4,12 +4,12 @@ import { requireAdmin } from "~/lib/admin-middleware";
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { subscriptionId: string } },
+  { params }: { params: Promise<{ subscriptionId: string }> },
 ) {
   try {
     await requireAdmin();
 
-    const { subscriptionId } = params;
+    const { subscriptionId } = await params;
 
     // Reactivate the subscription
     const updatedSubscription = await db.subscription.update({

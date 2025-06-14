@@ -6,8 +6,7 @@ export async function GET(_request: NextRequest) {
   try {
     // Check admin access
     await requireAdmin();
-
-    // Get basic user information
+    // Get user information with subscription data
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -15,6 +14,31 @@ export async function GET(_request: NextRequest) {
         name: true,
         subscriptionTier: true,
         role: true,
+        isActive: true,
+        createdAt: true,
+        subscriptions: {
+          where: {
+            status: {
+              in: ["active", "trialing", "past_due"],
+            },
+          },
+          select: {
+            id: true,
+            status: true,
+            currentPeriodEnd: true,
+            cancelAtPeriodEnd: true,
+            plan: {
+              select: {
+                name: true,
+                displayName: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
       },
       orderBy: {
         email: "asc",
@@ -22,16 +46,30 @@ export async function GET(_request: NextRequest) {
     });
 
     // Transform the data
-    const transformedUsers = users.map((user) => ({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      subscriptionTier: user.subscriptionTier,
-      role: user.role,
-      isActive: true, // Default to true for now
-      createdAt: new Date(), // Default to current date for now
-      subscription: null, // Will implement subscription lookup later
-    }));
+    const transformedUsers = users.map((user) => {
+      const activeSubscription = user.subscriptions[0];
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionTier: user.subscriptionTier,
+        role: user.role,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        subscription: activeSubscription
+          ? {
+              id: activeSubscription.id,
+              status: activeSubscription.status,
+              currentPeriodEnd: activeSubscription.currentPeriodEnd,
+              cancelAtPeriodEnd: activeSubscription.cancelAtPeriodEnd,
+              plan:
+                activeSubscription.plan.displayName ||
+                activeSubscription.plan.name,
+            }
+          : null,
+      };
+    });
 
     return NextResponse.json({
       users: transformedUsers,
