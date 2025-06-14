@@ -171,17 +171,9 @@ export function PageLayout({
           </div>
         </div>
 
-        {isMobileScreen &&
-          !pathname.includes("/app/sound-effects") &&
-          !pathname.includes("/app/generate-image") &&
-          !pathname.includes("/app/generate-video") &&
-          !pathname.includes("/app/settings/account-settings") &&
-          !pathname.includes("/app/media-library") &&
-          !pathname.includes("/app/dashboard") &&
-          !pathname.includes("/app/settings/billing") &&
-          !pathname.includes("/app/explore") && (
-            <MobileSettingsButton toggleMobileMenu={toggleMobileMenu} />
-          )}
+        {isMobileScreen && pathname.includes("/app/speech-synthesis") && (
+          <MobileSettingsButton toggleMobileMenu={toggleMobileMenu} />
+        )}
 
         {currentAudio && <Playbar />}
       </div>

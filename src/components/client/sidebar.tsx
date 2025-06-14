@@ -12,6 +12,10 @@ import {
   FolderOpen,
   Globe,
   Video,
+  ChartArea,
+  Users,
+  Wrench,
+  Tickets,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -77,6 +81,40 @@ export default function Sidebar({ isMobile = false }: { isMobile?: boolean }) {
 
       {/* Navigation */}
       <nav className="mt-8 flex flex-1 flex-col">
+        <SectionHeader isExpanded={isExpanded}>Admin</SectionHeader>
+        <SidebarButton
+          icon={<ChartArea />}
+          isExpanded={isExpanded}
+          isActive={pathname.includes("/app/admin/analytics")}
+          href="/app/admin/analytics"
+        >
+          Analytics
+        </SidebarButton>
+        <SidebarButton
+          icon={<Users />}
+          isExpanded={isExpanded}
+          isActive={pathname.includes("/app/admin/users")}
+          href="/app/admin/users"
+        >
+          Users
+        </SidebarButton>
+        <SidebarButton
+          icon={<Tickets />}
+          isExpanded={isExpanded}
+          isActive={pathname.includes("/app/admin/subscriptions")}
+          href="/app/admin/subscriptions"
+        >
+          Subscriptions
+        </SidebarButton>
+        <SidebarButton
+          icon={<Wrench />}
+          isExpanded={isExpanded}
+          isActive={pathname.includes("/app/admin/settings")}
+          href="/app/admin/settings"
+        >
+          Settings
+        </SidebarButton>
+
         <SectionHeader isExpanded={isExpanded}>Dashboard</SectionHeader>
         <SidebarButton
           icon={<LayoutDashboard />}

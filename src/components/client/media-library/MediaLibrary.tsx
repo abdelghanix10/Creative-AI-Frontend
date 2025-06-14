@@ -475,7 +475,7 @@ export default function MediaLibrary({
         >
           <ImageIcon className="mr-2 h-4 w-4" />
           Images ({images.length})
-        </Button>{" "}
+        </Button>
         <Button
           variant={activeTab === "audio" ? "default" : "outline"}
           size="sm"
@@ -592,7 +592,7 @@ export default function MediaLibrary({
                                   ? "PlayGround"
                                   : item.provider == "fireworks2"
                                     ? "Flux"
-                                    : "Stable Diffusion"}{" "}
+                                    : "Stable Diffusion"}
                                 • {item.modelId.split("/").pop()}
                               </div>
                               <Button
@@ -648,7 +648,7 @@ export default function MediaLibrary({
                                   ? "PlayGround"
                                   : item.provider == "fireworks2"
                                     ? "Flux"
-                                    : "Stable Diffusion"}{" "}
+                                    : "Stable Diffusion"}
                                 • {item.modelId.split("/").pop()}
                               </div>
                             </div>
@@ -696,7 +696,7 @@ export default function MediaLibrary({
                                   addSuffix: true,
                                 })}
                               </span>
-                            </div>{" "}
+                            </div>
                             <p className="mb-2 line-clamp-2 text-sm font-medium">
                               {item.text ?? "Generated Audio"}
                             </p>
@@ -846,7 +846,7 @@ export default function MediaLibrary({
                                   addSuffix: true,
                                 })}
                               </span>
-                            </div>{" "}
+                            </div>
                             <p className="mb-2 text-sm font-medium">
                               {item.text ?? "Sound Effect"}
                             </p>

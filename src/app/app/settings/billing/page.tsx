@@ -15,9 +15,18 @@ import { Button } from "~/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { useUserCredits } from "~/hooks/use-user-credits";
 import { useUserSubscription } from "~/hooks/use-user-subscription";
-import { Check, Crown, Sparkles } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  CreditCard,
+  Crown,
+  DollarSign,
+  History,
+  Sparkles,
+} from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
 import { motion } from "framer-motion";
+import { Badge } from "~/components/ui/badge";
 
 interface SubscriptionPlan {
   id: string;
@@ -177,6 +186,29 @@ export default function BillingPage() {
     return yearlyPrice ?? monthlyPrice * 12 * 0.8; // 20% discount if no yearly price set
   };
 
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "paid":
+      case "succeeded":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "failed":
+      case "payment_failed":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   if (plansLoading) {
     return (
       <PageLayout
@@ -225,7 +257,7 @@ export default function BillingPage() {
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <p className="text-sm text-muted-foreground">Plan</p>{" "}
+                <p className="text-sm text-muted-foreground">Plan</p>
                 <div className="flex items-center gap-2">
                   <p className="text-xl font-bold text-foreground">
                     {currentTier}
@@ -261,8 +293,157 @@ export default function BillingPage() {
             </div>
           </CardContent>
         </Card>
-        {/* Subscription Plans */}{" "}
-        <div>
+        {/* Sub OverView */}
+        <Card className="flex flex-col gap-2 border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Subscription Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="flex items-center space-x-4">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <CreditCard className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Current Plan</p>
+                  <p className="text-lg font-semibold">{currentTier}</p>
+                </div>
+              </div>
+
+              {subscription && (
+                <>
+                  <div className="flex items-center space-x-4">
+                    <div className="rounded-full bg-blue-100 p-3">
+                      <Calendar className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Next Billing
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {subscription.currentPeriodEnd
+                          ? formatDate(subscription.currentPeriodEnd)
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <div className="rounded-full bg-green-100 p-3">
+                      <DollarSign className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Status</p>
+                      <Badge className={getStatusColor(subscription.status)}>
+                        {subscription.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        {/* Additional Information */}
+        <Card className="flex flex-col gap-2 border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Billing Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <h4 className="font-medium text-foreground">Payment Method</h4>
+                <p className="text-sm text-muted-foreground">
+                  {currentTier === "Free"
+                    ? "No payment method required"
+                    : "Managed through Stripe"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium text-foreground">Billing Cycle</h4>
+                <p className="text-sm text-muted-foreground">
+                  {subscription?.interval
+                    ? subscription.interval.charAt(0).toUpperCase() +
+                      subscription.interval.slice(1)
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {currentTier !== "Free" && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm text-foreground">
+                  <strong>Note:</strong> To manage your subscription, cancel, or
+                  update payment methods, please contact our support team.
+                  We&apos;ll be happy to assist you with any billing changes.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {/* Invoice History */}
+        {invoices.length > 0 && (
+          <Card className="flex flex-col gap-2 border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Invoice History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {invoices.slice(0, 5).map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="flex items-center justify-between border-b border-border pb-2"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {formatPrice(invoice.amount)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {invoice.description ?? "Subscription payment"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(invoice.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`text-sm font-medium ${
+                          invoice.status === "paid"
+                            ? "text-green-600"
+                            : "text-yellow-600"
+                        }`}
+                      >
+                        {invoice.status.charAt(0).toUpperCase() +
+                          invoice.status.slice(1)}
+                      </p>
+                      {invoice.invoiceUrl && (
+                        <a
+                          href={invoice.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:text-primary/80 hover:underline"
+                        >
+                          View Invoice
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {/* Subscription Plans */}
+        <div className="!mb-6">
           <h2 className="mb-6 text-center text-2xl font-bold text-foreground">
             Available Subscription Plans
           </h2>
@@ -324,7 +505,7 @@ export default function BillingPage() {
                           <p className="mt-2 text-muted-foreground">
                             {plan.description ??
                               `${plan.credits.toLocaleString()} credits per month`}
-                          </p>{" "}
+                          </p>
                           <ul className="my-6 flex-grow space-y-3">
                             {parseFeatures(plan.features).map((feature, j) => (
                               <li key={j} className="flex items-center">
@@ -414,7 +595,7 @@ export default function BillingPage() {
                               <Check className="mr-1 inline h-3 w-3" />
                               Current Plan
                             </div>
-                          )}{" "}
+                          )}
                           <CardContent className="flex h-full flex-col p-6">
                             <h3 className="text-2xl font-bold text-foreground">
                               {plan.displayName}
@@ -437,7 +618,7 @@ export default function BillingPage() {
                                 `${plan.credits.toLocaleString()} credits per month`}
                               {plan.price > 0 &&
                                 " • Save 20% with annual billing"}
-                            </p>{" "}
+                            </p>
                             <ul className="my-6 flex-grow space-y-3">
                               {parseFeatures(plan.features).map(
                                 (feature, j) => (
@@ -504,97 +685,6 @@ export default function BillingPage() {
             </Tabs>
           </div>
         </div>
-        {/* Additional Information */}{" "}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-foreground">
-              Billing Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <h4 className="font-medium text-foreground">Payment Method</h4>
-                <p className="text-sm text-muted-foreground">
-                  {currentTier === "Free"
-                    ? "No payment method required"
-                    : "Managed through Stripe"}
-                </p>
-              </div>
-              <div>
-                <h4 className="font-medium text-foreground">Billing Cycle</h4>
-                <p className="text-sm text-muted-foreground">
-                  {subscription?.interval
-                    ? subscription.interval.charAt(0).toUpperCase() +
-                      subscription.interval.slice(1)
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
-
-            {currentTier !== "Free" && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                <p className="text-sm text-foreground">
-                  <strong>Note:</strong> To manage your subscription, cancel, or
-                  update payment methods, please contact our support team.
-                  We&apos;ll be happy to assist you with any billing changes.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        {/* Invoice History */}{" "}
-        {invoices.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-foreground">Invoice History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {invoices.slice(0, 5).map((invoice) => (
-                  <div
-                    key={invoice.id}
-                    className="flex items-center justify-between border-b border-border pb-2"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">
-                        {formatPrice(invoice.amount)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {invoice.description ?? "Subscription payment"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(invoice.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`text-sm font-medium ${
-                          invoice.status === "paid"
-                            ? "text-green-600"
-                            : "text-yellow-600"
-                        }`}
-                      >
-                        {invoice.status.charAt(0).toUpperCase() +
-                          invoice.status.slice(1)}
-                      </p>
-                      {invoice.invoiceUrl && (
-                        <a
-                          href={invoice.invoiceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:text-primary/80 hover:underline"
-                        >
-                          View Invoice
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </PageLayout>
   );

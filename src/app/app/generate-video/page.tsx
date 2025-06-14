@@ -393,7 +393,7 @@ export default function VideoGenerator() {
             <Card className="w-full max-w-2xl">
               <CardContent className="flex h-96 items-center justify-center">
                 <div className="text-center text-muted-foreground">
-                  <Play className="mx-auto mb-4 h-16 w-16 opacity-50" />{" "}
+                  <Play className="mx-auto mb-4 h-16 w-16 opacity-50" />
                   <p className="text-lg">
                     Your generated video will appear here
                   </p>
@@ -436,7 +436,7 @@ export default function VideoGenerator() {
                 <CardDescription>
                   Your AI-generated video is ready!
                 </CardDescription>
-              </CardHeader>{" "}
+              </CardHeader>
               <CardContent>
                 <div className="relative overflow-hidden rounded-lg bg-black">
                   <VideoPlayer
@@ -446,7 +446,7 @@ export default function VideoGenerator() {
                     showDownloadButton={false}
                     title="Generated Video"
                   />
-                </div>{" "}
+                </div>
                 <div className="mt-4 flex gap-2">
                   <Button asChild className="flex-1">
                     <a

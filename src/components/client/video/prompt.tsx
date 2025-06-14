@@ -234,7 +234,7 @@ export default function AI_Prompt({
   };
 
   return (
-    <div className="w-full md:w-4/6 py-4">
+    <div className="w-full py-4 md:w-4/6">
       <div className="rounded-2xl bg-black/5 p-1.5 dark:bg-white/5">
         <div className="relative">
           <div className="relative flex flex-col">
@@ -306,7 +306,7 @@ export default function AI_Prompt({
                   <div className="space-y-1">
                     <label className="text-xs text-black/60 dark:text-white/60">
                       Duration
-                    </label>{" "}
+                    </label>
                     <Select
                       value={duration}
                       onValueChange={(value) =>
@@ -325,7 +325,7 @@ export default function AI_Prompt({
                   <div className="space-y-1">
                     <label className="text-xs text-black/60 dark:text-white/60">
                       Aspect Ratio
-                    </label>{" "}
+                    </label>
                     <Select
                       value={aspectRatio}
                       onValueChange={(value) =>
@@ -334,7 +334,7 @@ export default function AI_Prompt({
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Select ratio" />
-                      </SelectTrigger>{" "}
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="16:9">16:9</SelectItem>
                         <SelectItem value="9:16">9:16</SelectItem>
@@ -470,7 +470,7 @@ export default function AI_Prompt({
                           )}
                         </DropdownMenuItem>
                       ))}
-                    </DropdownMenuContent>{" "}
+                    </DropdownMenuContent>
                   </DropdownMenu>
                   <div className="mx-0.5 h-4 w-px bg-black/10 dark:bg-white/10" />
                   {/* Upload button - only visible in image-to-video mode */}

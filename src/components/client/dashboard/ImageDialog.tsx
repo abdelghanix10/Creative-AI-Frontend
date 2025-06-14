@@ -112,7 +112,7 @@ export function ImageDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Badge variant="secondary">Image</Badge>
-            Generated{" "}
+            Generated
             {formatDistanceToNow(new Date(image.createdAt), {
               addSuffix: true,
             })}
@@ -153,7 +153,7 @@ export function ImageDialog({
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
-            </div>{" "}
+            </div>
             {/* Image Container */}
             <div
               className="relative w-full overflow-hidden rounded-lg bg-muted"

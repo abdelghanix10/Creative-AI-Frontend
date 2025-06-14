@@ -461,7 +461,7 @@ export default function ExploreGallery({
             >
               <ImageIcon className="mr-2 h-4 w-4" />
               Images ({images.length})
-            </Button>{" "}
+            </Button>
             <Button
               variant={activeTab === "soundEffects" ? "default" : "outline"}
               size="sm"
@@ -560,7 +560,7 @@ export default function ExploreGallery({
                                     ? "PlayGround"
                                     : item.provider == "fireworks2"
                                       ? "Flux"
-                                      : "Stable Diffusion"}{" "}
+                                      : "Stable Diffusion"}
                                   • {item.modelId.split("/").pop()}
                                 </p>
                                 <Button
@@ -631,7 +631,7 @@ export default function ExploreGallery({
                                     ? "PlayGround"
                                     : item.provider == "fireworks2"
                                       ? "Flux"
-                                      : "Stable Diffusion"}{" "}
+                                      : "Stable Diffusion"}
                                   • {item.modelId.split("/").pop()}
                                 </p>
                               </div>
@@ -673,7 +673,7 @@ export default function ExploreGallery({
                           </div>
                         )}
                       </>
-                    )}{" "}
+                    )}
                     {item.type === "soundEffect" && (
                       <>
                         {viewMode === "grid" ? (
@@ -704,7 +704,7 @@ export default function ExploreGallery({
                                   addSuffix: true,
                                 })}
                               </p>
-                            </div>{" "}
+                            </div>
                             {item.s3Key && (
                               <div className="flex gap-2">
                                 <Button
@@ -782,7 +782,7 @@ export default function ExploreGallery({
                                       addSuffix: true,
                                     },
                                   )}
-                                </span>{" "}
+                                </span>
                                 <div className="flex gap-1">
                                   {item.s3Key && (
                                     <Button

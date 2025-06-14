@@ -197,7 +197,7 @@ export function PaymentDunning({ userId }: PaymentDunningProps) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        ${payment.amount.toFixed(2)}{" "}
+                        ${payment.amount.toFixed(2)}
                         {payment.currency.toUpperCase()}
                       </span>
                       <Badge variant="destructive">
@@ -211,12 +211,12 @@ export function PaymentDunning({ userId }: PaymentDunningProps) {
                     )}
                     {payment.invoice?.dueDate && (
                       <p className="text-sm text-muted-foreground">
-                        Due:{" "}
+                        Due:
                         {new Date(payment.invoice.dueDate).toLocaleDateString()}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Failed on{" "}
+                      Failed on
                       {new Date(payment.createdAt).toLocaleDateString()}
                     </p>
                   </div>

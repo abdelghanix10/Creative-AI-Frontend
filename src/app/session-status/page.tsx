@@ -168,7 +168,7 @@ export default function SessionStatusPage() {
                   <strong>Email:</strong> {dbUser.email}
                 </p>
                 <p>
-                  <strong>Created:</strong>{" "}
+                  <strong>Created:</strong>
                   {new Date(dbUser.createdAt).toLocaleString()}
                 </p>
               </div>
@@ -230,7 +230,7 @@ export default function SessionStatusPage() {
                   User" button)
                 </li>
                 <li>
-                  If database role is not ADMIN, go to <code>/admin-setup</code>{" "}
+                  If database role is not ADMIN, go to <code>/admin-setup</code>
                   and set admin role
                 </li>
                 <li>

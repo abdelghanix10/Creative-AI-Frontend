@@ -158,7 +158,7 @@ export default async function MediaLibraryPage() {
               {mediaData.totalItems} items)
             </p>
           </div>
-        </div>{" "}
+        </div>
         <MediaLibrary
           images={mediaData.images}
           audioClips={mediaData.audioClips}

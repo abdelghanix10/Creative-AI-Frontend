@@ -201,7 +201,6 @@ export function BillingDashboard({ userId }: BillingDashboardProps) {
                       key={invoice.id}
                       className="flex items-center justify-between border-b border-gray-200 pb-4"
                     >
-                      {" "}
                       <div>
                         <p className="font-medium">
                           {invoice.description ?? "Subscription Payment"}
@@ -253,13 +252,12 @@ export function BillingDashboard({ userId }: BillingDashboardProps) {
                       key={payment.id}
                       className="flex items-center justify-between border-b border-gray-200 pb-4"
                     >
-                      {" "}
                       <div>
                         <p className="font-medium">
                           {payment.description ?? "Payment"}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(payment.createdAt)} •{" "}
+                          {formatDate(payment.createdAt)} •
                           {payment.paymentMethod ?? "Card"}
                         </p>
                       </div>

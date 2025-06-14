@@ -6,4 +6,5 @@ export type ServiceType =
   | "text2video"
   | "explore"
   | "settings"
-  | "media-library";
+  | "media-library"
+  | "admin";

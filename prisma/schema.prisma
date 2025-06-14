@@ -41,6 +41,7 @@ model User {
     credits       Int @default(100)
     subscriptionTier String @default("Free") // Free, Lite, Pro
     role          String    @default("USER") // USER, ADMIN
+    isActive      Boolean   @default(true) // User account status
     stripeCustomerId String?
     stripeSubscriptionId String?
     sessions      Session[]

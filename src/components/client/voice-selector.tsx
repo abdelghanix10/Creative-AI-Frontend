@@ -174,7 +174,7 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
         {(service === "styletts2" || service === "seedvc") && (
           <div className="mt-2 rounded-lg border border-border bg-background p-3 shadow-sm">
             <h3 className="mb-2 text-sm font-medium text-foreground">
-              Upload New Voice{" "}
+              Upload New Voice
             </h3>
             <input
               type="file"
@@ -229,7 +229,7 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
               )}
             </button>
             <p className="mt-1 text-center text-xs text-muted-foreground">
-              Max 10MB, recommended{" "}
+              Max 10MB, recommended
               {service === "styletts2" ? "3-30s" : "3-10s"} audio.
             </p>
           </div>

@@ -38,7 +38,7 @@ export default async function ExplorePage() {
               {exploreData.totalItems} public items)
             </p>
           </div>
-        </div>{" "}
+        </div>
         <ExploreGallery
           images={exploreData.images}
           soundEffects={exploreData.soundEffects}

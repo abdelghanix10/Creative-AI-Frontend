@@ -75,7 +75,7 @@ export function VideoCard({
               addSuffix: true,
             })}
           </span>
-        </div>{" "}
+        </div>
         {video.videoUrl && (
           <div className="mb-3 overflow-hidden rounded-md bg-muted">
             <VideoPlayer
@@ -93,11 +93,14 @@ export function VideoCard({
             />
           </div>
         )}
-        <p className="mb-2 line-clamp-2 text-sm font-medium cursor-pointer" onClick={onClick}>
+        <p
+          className="mb-2 line-clamp-2 cursor-pointer text-sm font-medium"
+          onClick={onClick}
+        >
           {video.prompt}
         </p>
         <div className="flex items-center justify-between">
-          <div className="truncate text-xs text-muted-foreground capitalize">
+          <div className="truncate text-xs capitalize text-muted-foreground">
             {video.provider} • {video.modelId}
             {video.duration && ` • ${video.duration}s`}
             {video.resolution && ` • ${video.resolution}`}

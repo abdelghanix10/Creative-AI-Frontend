@@ -43,13 +43,13 @@ export function ImageGenerator({
               className="flex items-center gap-2 text-destructive"
             >
               <AlertCircle className="h-4 w-4" />
-              {errors.length} {errors.length === 1 ? "error" : "errors"}{" "}
+              {errors.length} {errors.length === 1 ? "error" : "errors"}
               occurred
               <ChevronDown className="h-4 w-4 transition-transform duration-200 data-[state=open]:rotate-180" />
             </Button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="space-y-2 mt-2">
+            <div className="mt-2 space-y-2">
               {errors.map((err, index) => (
                 <Alert key={index} variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function ImageGenerator({
       </div>
 
       {/* Desktop layout: Grid */}
-      <div className="hidden sm:grid sm:grid-cols-2 2xl:grid-cols-4 gap-6">
+      <div className="hidden gap-6 sm:grid sm:grid-cols-2 2xl:grid-cols-4">
         {PROVIDER_ORDER.map((provider) => {
           const imageItem = images.find((img) => img.provider === provider);
           const imageData = imageItem?.image;

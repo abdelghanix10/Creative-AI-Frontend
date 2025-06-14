@@ -386,14 +386,14 @@ export default function RecentGenerations({
               onClick={() => setActiveTab("images")}
             >
               Images
-            </Button>{" "}
+            </Button>
             <Button
               variant={activeTab === "audio" ? "default" : "outline"}
               size="sm"
               onClick={() => setActiveTab("audio")}
             >
               Speech
-            </Button>{" "}
+            </Button>
             <Button
               variant={activeTab === "voices" ? "default" : "outline"}
               size="sm"
@@ -515,7 +515,6 @@ export default function RecentGenerations({
                         </span>
                       </div>
                       <div>
-                        {" "}
                         <p className="mb-2 line-clamp-2 text-sm font-medium">
                           {item.text ?? "Generated Audio"}
                         </p>
@@ -572,7 +571,7 @@ export default function RecentGenerations({
                         </div>
                       </div>
                     </>
-                  )}{" "}
+                  )}
                   {item.type === "voice" && "text" in item && (
                     <>
                       <div className="mb-2 flex items-start justify-between">
@@ -587,9 +586,8 @@ export default function RecentGenerations({
                             addSuffix: true,
                           })}
                         </span>
-                      </div>{" "}
+                      </div>
                       <div>
-                        {" "}
                         <p className="mb-2 line-clamp-2 text-sm font-medium">
                           {item.text ?? "Generated Sound Effect"}
                         </p>

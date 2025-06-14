@@ -5,7 +5,9 @@ import { requireAdmin } from "~/lib/admin-middleware";
 export async function GET(_request: NextRequest) {
   try {
     // Check admin access
-    await requireAdmin(); // Get users with their subscriptions
+    await requireAdmin();
+
+    // Get basic user information
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -13,26 +15,6 @@ export async function GET(_request: NextRequest) {
         name: true,
         subscriptionTier: true,
         role: true,
-        subscriptions: {
-          select: {
-            id: true,
-            status: true,
-            currentPeriodStart: true,
-            currentPeriodEnd: true,
-            cancelAtPeriodEnd: true,
-            createdAt: true,
-            plan: {
-              select: {
-                displayName: true,
-                price: true,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 1, // Get the most recent subscription
-        },
       },
       orderBy: {
         email: "asc",
@@ -46,18 +28,9 @@ export async function GET(_request: NextRequest) {
       name: user.name,
       subscriptionTier: user.subscriptionTier,
       role: user.role,
-      subscription: user.subscriptions[0]
-        ? {
-            id: user.subscriptions[0].id,
-            status: user.subscriptions[0].status,
-            currentPeriodStart: user.subscriptions[0].currentPeriodStart,
-            currentPeriodEnd: user.subscriptions[0].currentPeriodEnd,
-            cancelAtPeriodEnd: user.subscriptions[0].cancelAtPeriodEnd,
-            createdAt: user.subscriptions[0].createdAt,
-            plan: user.subscriptions[0].plan?.displayName,
-            price: user.subscriptions[0].plan?.price,
-          }
-        : null,
+      isActive: true, // Default to true for now
+      createdAt: new Date(), // Default to current date for now
+      subscription: null, // Will implement subscription lookup later
     }));
 
     return NextResponse.json({

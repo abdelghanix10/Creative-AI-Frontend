@@ -262,21 +262,20 @@ export function SubscriptionMetrics({
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {" "}
             <Button
               variant="outline"
               className="w-full justify-start"
               onClick={() => toast("Feature coming soon", { icon: "ℹ️" })}
             >
               Export Subscribers
-            </Button>{" "}
+            </Button>
             <Button
               variant="outline"
               className="w-full justify-start"
               onClick={() => toast("Feature coming soon", { icon: "ℹ️" })}
             >
               Revenue Report
-            </Button>{" "}
+            </Button>
             <Button
               variant="outline"
               className="w-full justify-start"

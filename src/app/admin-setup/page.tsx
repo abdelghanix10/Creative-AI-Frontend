@@ -158,7 +158,7 @@ export default function AdminSetupPage() {
                       ⚠️ Session Out of Sync
                     </h3>
                     <p className="mb-3 text-sm text-yellow-700">
-                      Your database role is{" "}
+                      Your database role is
                       <strong>{userData.databaseUser.role}</strong> but your
                       session shows <strong>{userData.session.role}</strong>.
                       The JWT token needs to be refreshed.
