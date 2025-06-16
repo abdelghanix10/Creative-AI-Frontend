@@ -185,48 +185,9 @@ export function SubscriptionMetrics({
         </Card>
       </div>
 
-      {/* Plan Distribution */}
-      {metrics?.planDistribution && metrics.planDistribution.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Plan Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {metrics.planDistribution.map((plan) => {
-                const percentage = formatPercentage(
-                  plan._count.planId,
-                  metrics.activeSubscriptions,
-                );
-
-                return (
-                  <div
-                    key={plan.planId}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <CreditCard className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Plan {plan.planId}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">
-                        {plan._count.planId} subscribers
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {percentage}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Additional Metrics */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+        {/* Additional Metrics */}
+        <Card className="flex flex-col gap-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -256,35 +217,51 @@ export function SubscriptionMetrics({
             </div>
           </CardContent>
         </Card>
+        {/* Plan Distribution */}
+        {metrics?.planDistribution && metrics.planDistribution.length > 0 && (
+          <Card className="flex flex-col gap-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Plan Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {metrics.planDistribution.map((plan) => {
+                  const percentage = formatPercentage(
+                    plan._count.planId,
+                    metrics.activeSubscriptions,
+                  );
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => toast("Feature coming soon", { icon: "ℹ️" })}
-            >
-              Export Subscribers
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => toast("Feature coming soon", { icon: "ℹ️" })}
-            >
-              Revenue Report
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => toast("Feature coming soon", { icon: "ℹ️" })}
-            >
-              Failed Payments
-            </Button>
-          </CardContent>
-        </Card>
+                  return (
+                    <div
+                      key={plan.planId}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />{" "}
+                        <span className="font-medium">
+                          {plan.plan?.displayName ||
+                            plan.plan?.name ||
+                            `Plan ${plan.planId}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="secondary">
+                          {plan._count.planId} subscribers
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {percentage}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

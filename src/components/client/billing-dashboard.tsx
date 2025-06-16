@@ -25,7 +25,7 @@ export function BillingDashboard({ userId }: BillingDashboardProps) {
     isLoading,
     billingHistory,
     fetchBillingHistory,
-    cancelUserSubscription,
+    cancelSubscription,
     downloadInvoice,
   } = useSubscriptionManagement();
 
@@ -36,9 +36,8 @@ export function BillingDashboard({ userId }: BillingDashboardProps) {
       void fetchBillingHistory(10);
     }
   }, [userId, fetchBillingHistory]);
-
   const handleCancelSubscription = async (immediately = false) => {
-    const result = await cancelUserSubscription(immediately);
+    const result = await cancelSubscription(immediately);
     if (result.success) {
       setShowCancelDialog(false);
     }

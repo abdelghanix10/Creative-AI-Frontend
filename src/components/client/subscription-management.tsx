@@ -41,6 +41,7 @@ interface SubscriptionData {
     id: string;
     displayName: string;
     price: number;
+    yearlyPrice: number;
   };
   stripeSubscriptionId?: string;
 }
@@ -365,7 +366,7 @@ export function SubscriptionManagement() {
               {filteredSubscriptions.map((subscription) => (
                 <div
                   key={subscription.id}
-                  className="flex justify-between gap-4 border-b border-gray-200 pb-4 items-center"
+                  className="flex items-center justify-between gap-4 border-b border-gray-200 pb-4"
                 >
                   <div className="flex w-full flex-col items-start justify-between gap-2 md:flex-row md:items-center">
                     <div className="flex-1">
@@ -382,11 +383,10 @@ export function SubscriptionManagement() {
                               className={getStatusColor(subscription.status)}
                             >
                               {subscription.status}
-                            </Badge>{" "}
+                            </Badge>
                             <span className="text-xs text-muted-foreground">
-                              {subscription.plan.displayName} •
-                              {formatAmount(subscription.plan.price)}/
-                              {subscription.interval}
+                              {subscription.interval == "monthly" ? formatAmount(subscription.plan.price) : formatAmount(subscription.plan.yearlyPrice)}
+                              /{subscription.interval}
                             </span>
                           </div>
                         </div>

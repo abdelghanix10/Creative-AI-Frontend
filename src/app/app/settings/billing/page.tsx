@@ -8,6 +8,7 @@ import {
   createCheckoutSession,
   getSubscriptionPlans,
   getUserInvoices,
+  cancelUserSubscription,
 } from "~/actions/subscription";
 import { PageLayout } from "~/components/client/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -27,6 +28,14 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { Badge } from "~/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 
 interface SubscriptionPlan {
   id: string;
@@ -63,6 +72,10 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelType, setCancelType] = useState<"immediate" | "period-end">(
+    "period-end",
+  );
   // Add a ref to track if data has been fetched
   const dataFetched = useRef(false);
 
@@ -164,10 +177,49 @@ export default function BillingPage() {
     }
   };
 
+  // Handle subscription cancellation
+  const handleCancelSubscription = async (immediately = false) => {
+    try {
+      setLoading(immediately ? "cancel-immediate" : "cancel-period-end");
+      await cancelUserSubscription(immediately);
+      toast.success(
+        immediately
+          ? "Subscription canceled immediately. Refund will be processed if applicable."
+          : "Subscription will be canceled at the end of your current billing period",
+      );
+      await refetchAllData();
+      setCancelDialogOpen(false);
+    } catch (error) {
+      console.error("Error canceling subscription:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel subscription";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // Open cancel dialog with the specified type
+  const openCancelDialog = (type: "immediate" | "period-end") => {
+    setCancelType(type);
+    setCancelDialogOpen(true);
+  };
+
+  // Check if immediate cancellation is allowed
+  const canCancelImmediately = () => {
+    if (!subscription?.plan?.credits || credits === null) return true;
+    return credits <= subscription.plan.credits;
+  };
   const isCurrentPlan = (planName: string) => currentTier === planName;
   const canUpgrade = (planName: string) => {
-    const tierOrder = ["Free", "Lite", "Pro"];
-    return tierOrder.indexOf(planName) > tierOrder.indexOf(currentTier);
+    // Only Free tier can upgrade to Lite or Pro
+    // Lite and Pro tiers cannot upgrade
+    if (currentTier === "Free") {
+      return planName === "Lite" || planName === "Pro";
+    }
+    return false;
   };
   const formatPrice = (price: number) => {
     if (price === 0) return "$0";
@@ -292,7 +344,7 @@ export default function BillingPage() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>{" "}
         {/* Sub OverView */}
         <Card className="flex flex-col gap-2 border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
           <CardHeader>
@@ -315,6 +367,7 @@ export default function BillingPage() {
 
               {subscription && (
                 <>
+                  {" "}
                   <div className="flex items-center space-x-4">
                     <div className="rounded-full bg-blue-100 p-3">
                       <Calendar className="h-6 w-6 text-blue-600" />
@@ -328,9 +381,16 @@ export default function BillingPage() {
                           ? formatDate(subscription.currentPeriodEnd)
                           : "N/A"}
                       </p>
+                      {subscription.interval && (
+                        <p className="text-xs text-muted-foreground">
+                          {subscription.interval === "yearly"
+                            ? "Annual"
+                            : "Monthly"}{" "}
+                          billing
+                        </p>
+                      )}
                     </div>
                   </div>
-
                   <div className="flex items-center space-x-4">
                     <div className="rounded-full bg-green-100 p-3">
                       <DollarSign className="h-6 w-6 text-green-600" />
@@ -364,25 +424,70 @@ export default function BillingPage() {
                     ? "No payment method required"
                     : "Managed through Stripe"}
                 </p>
-              </div>
+              </div>{" "}
               <div>
                 <h4 className="font-medium text-foreground">Billing Cycle</h4>
                 <p className="text-sm text-muted-foreground">
                   {subscription?.interval
-                    ? subscription.interval.charAt(0).toUpperCase() +
-                      subscription.interval.slice(1)
+                    ? subscription.interval === "yearly"
+                      ? "Annual"
+                      : "Monthly"
                     : "N/A"}
                 </p>
               </div>
-            </div>
-
+            </div>{" "}
             {currentTier !== "Free" && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                <p className="text-sm text-foreground">
-                  <strong>Note:</strong> To manage your subscription, cancel, or
-                  update payment methods, please contact our support team.
-                  We&apos;ll be happy to assist you with any billing changes.
-                </p>
+              <div className="space-y-4">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <h4 className="mb-2 font-medium text-foreground">
+                    Manage Subscription
+                  </h4>{" "}
+                  <p className="mb-4 text-sm text-foreground">
+                    You can cancel your subscription at any time. Choose to
+                    cancel immediately or at the end of your current billing
+                    period.
+                  </p>
+                  {canCancelImmediately() && (
+                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Note:</strong> You cannot cancel immediately
+                        because you have {credits} credits, which exceeds your
+                        plan limit of {subscription?.plan?.credits} credits.
+                        Please use your credits first or choose to cancel at the
+                        end of your billing period.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openCancelDialog("period-end")}
+                      disabled={loading === "cancel-period-end"}
+                    >
+                      {loading === "cancel-period-end"
+                        ? "Canceling..."
+                        : "Cancel at Period End"}
+                    </Button>{" "}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openCancelDialog("immediate")}
+                      disabled={
+                        loading === "cancel-immediate" || canCancelImmediately()
+                      }
+                      title={
+                        canCancelImmediately()
+                          ? "You have too many credits to cancel immediately"
+                          : ""
+                      }
+                    >
+                      {loading === "cancel-immediate"
+                        ? "Canceling..."
+                        : "Cancel Immediately"}
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
@@ -549,7 +654,7 @@ export default function BillingPage() {
                               variant="outline"
                               disabled
                             >
-                              Contact Support to Downgrade
+                              Contact Support
                             </Button>
                           )}
                         </CardContent>
@@ -672,7 +777,7 @@ export default function BillingPage() {
                                 variant="outline"
                                 disabled
                               >
-                                Contact Support to Downgrade
+                                Contact Support
                               </Button>
                             )}
                           </CardContent>
@@ -683,9 +788,45 @@ export default function BillingPage() {
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
+          </div>{" "}
         </div>
       </div>
+
+      {/* Cancel Subscription Confirmation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>{" "}
+            <DialogDescription>
+              {cancelType === "immediate"
+                ? `Are you sure you want to cancel your subscription immediately? You can only cancel immediately if your current credits (${credits ?? 0}) do not exceed your plan limit. You will receive a prorated refund for the unused portion of your current billing period. You will lose access to your plan features right away.`
+                : "Are you sure you want to cancel your subscription? Your plan will remain active until the end of your current billing period, and then it will be canceled automatically."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={loading !== null}
+            >
+              Keep Subscription
+            </Button>
+            <Button
+              variant={cancelType === "immediate" ? "destructive" : "default"}
+              onClick={() =>
+                handleCancelSubscription(cancelType === "immediate")
+              }
+              disabled={loading !== null}
+            >
+              {loading !== null
+                ? "Processing..."
+                : cancelType === "immediate"
+                  ? "Cancel Immediately"
+                  : "Cancel at Period End"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

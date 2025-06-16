@@ -223,7 +223,7 @@ export default function SignUpPage() {
 
               <div className="text-center">
                 <span className="text-sm text-muted-foreground">
-                  Already have an account?
+                  Already have an account?{" "}
                   <a
                     className="font-medium text-primary underline hover:text-primary/80"
                     href="/app/sign-in"

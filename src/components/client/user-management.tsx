@@ -319,8 +319,8 @@ export function UserManagement() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-4 w-48">
-                      <div className="space-y-1 text-left flex flex-col gap-2">
+                    <div className="flex w-48 items-center space-x-4">
+                      <div className="flex flex-col gap-2 space-y-1 text-left">
                         {user.subscription ? (
                           <>
                             <div className="flex items-center gap-2">

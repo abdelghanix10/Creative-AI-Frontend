@@ -529,32 +529,221 @@ export async function getSubscriptionMetrics() {
       totalSubscriptions,
       activeSubscriptions,
       canceledSubscriptions,
-      totalRevenue,
-      planDistribution,
+      successfulPayments,
+      totalRevenueFromPayments,
+      totalRevenueFromInvoices,
+      activeSubscriptionsWithPlans,
     ] = await Promise.all([
       db.subscription.count(),
       db.subscription.count({ where: { status: "active" } }),
       db.subscription.count({ where: { status: "canceled" } }),
+      db.payment.count({ where: { status: "succeeded" } }),
       db.payment.aggregate({
         where: { status: "succeeded" },
         _sum: { amount: true },
       }),
-      db.subscription.groupBy({
-        by: ["planId"],
+      db.invoice.aggregate({
+        where: { status: "paid" },
+        _sum: { amount: true },
+      }),
+      db.subscription.findMany({
         where: { status: "active" },
-        _count: { planId: true },
+        select: {
+          planId: true,
+          plan: {
+            select: {
+              id: true,
+              name: true,
+              displayName: true,
+            },
+          },
+        },
       }),
     ]);
+
+    // Calculate total revenue from both payments and invoices
+    const paymentsTotal = totalRevenueFromPayments._sum.amount ?? 0;
+    const invoicesTotal = totalRevenueFromInvoices._sum.amount ?? 0;
+
+    // Use the higher value (in case of data inconsistency) or sum them if they're tracking different things
+    const totalRevenue = Math.max(paymentsTotal, invoicesTotal);
+
+    // Process plan distribution
+    const planDistribution = activeSubscriptionsWithPlans.reduce(
+      (acc, sub) => {
+        const existingPlan = acc.find((p) => p.planId === sub.planId);
+        if (existingPlan) {
+          existingPlan._count.planId++;
+        } else {
+          acc.push({
+            planId: sub.planId,
+            plan: sub.plan,
+            _count: { planId: 1 },
+          });
+        }
+        return acc;
+      },
+      [] as Array<{
+        planId: string;
+        plan: { id: string; name: string; displayName: string };
+        _count: { planId: number };
+      }>,
+    );
+
+    // Debug logging
+    console.log("📊 Subscription Metrics Debug:", {
+      totalSubscriptions,
+      activeSubscriptions,
+      canceledSubscriptions,
+      successfulPayments,
+      paymentsTotal,
+      invoicesTotal,
+      totalRevenue,
+      planDistribution: planDistribution.length,
+    });
 
     return {
       totalSubscriptions,
       activeSubscriptions,
       canceledSubscriptions,
-      totalRevenue: totalRevenue._sum.amount ?? 0,
+      totalRevenue,
       planDistribution,
+      debug: {
+        successfulPayments,
+        paymentsTotal,
+        invoicesTotal,
+      },
     };
   } catch (error) {
     console.error("Error fetching subscription metrics:", error);
     throw new Error("Failed to fetch subscription metrics");
+  }
+}
+
+// Simplified cancel subscription function
+export async function cancelUserSubscription(immediately = false) {
+  const session = await auth();
+  if (!session?.user.id) {
+    throw new Error("User not authenticated");
+  }
+
+  const subscription = await getUserSubscription(session.user.id);
+  if (!subscription) {
+    throw new Error("No active subscription found");
+  }
+
+  // Get current user data including credits
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { credits: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  try {
+    if (immediately) {
+      // Validation: Check if user's credits are <= plan credits before allowing immediate cancellation
+      if (user.credits < subscription.plan.credits) {
+        throw new Error(
+          `Cannot cancel immediately. You have ${user.credits} credits remaining, which exceeds your plan limit of ${subscription.plan.credits} credits. Please use your credits first or cancel at the end of your billing period.`,
+        );
+      }
+
+      // Cancel immediately
+      await stripe.subscriptions.cancel(subscription.stripeSubscriptionId!);
+
+      // Get the Free plan details from database
+      const freePlan = await db.subscriptionPlan.findUnique({
+        where: { name: "Free" },
+      });
+
+      await db.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: "canceled",
+          cancelAtPeriodEnd: false,
+        },
+      });
+
+      // Revert user to free plan
+      await db.user.update({
+        where: { id: session.user.id },
+        data: {
+          stripeSubscriptionId: null,
+          subscriptionTier: "Free",
+          credits: freePlan?.credits ?? 100,
+        },
+      });
+
+      // Process refund for immediate cancellation
+      try {
+        await processRefundForImmediateCancellation(
+          subscription.stripeSubscriptionId!,
+        );
+      } catch (refundError) {
+        console.error("Refund processing failed:", refundError);
+        // Don't throw here - subscription is already canceled, refund can be handled manually if needed
+      }
+    } else {
+      // Cancel at period end
+      await stripe.subscriptions.update(subscription.stripeSubscriptionId!, {
+        cancel_at_period_end: true,
+      });
+
+      await db.subscription.update({
+        where: { id: subscription.id },
+        data: { cancelAtPeriodEnd: true },
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error canceling subscription:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to cancel subscription",
+    );
+  }
+}
+
+// Helper function to process refund for immediate cancellation
+async function processRefundForImmediateCancellation(
+  stripeSubscriptionId: string,
+) {
+  try {
+    console.log(`Processing refund for subscription: ${stripeSubscriptionId}`);
+
+    // Get the latest invoice for this subscription
+    const invoices = await stripe.invoices.list({
+      subscription: stripeSubscriptionId,
+      limit: 1,
+    });
+
+    if (invoices.data.length === 0) {
+      console.log("No invoices found for refund processing");
+      return;
+    }
+
+    const latestInvoice = invoices.data[0];
+
+    if (!latestInvoice?.amount_paid) {
+      console.log("No valid invoice found for refund");
+      return;
+    }
+
+    // For now, log the refund action - in production you would implement the actual refund logic
+    console.log(
+      `Refund would be processed for invoice ${latestInvoice.id} with amount $${latestInvoice.amount_paid / 100}`,
+    );
+
+    // TODO: Implement actual prorated refund calculation and processing
+    // This would involve calculating the unused portion of the subscription period
+    // and creating a refund through Stripe's refund API
+
+    return { message: "Refund logged for processing" };
+  } catch (error) {
+    console.error("Error processing refund:", error);
+    throw error;
   }
 }

@@ -2,10 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Sparkles } from "lucide-react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import Image from "next/image";
 import type { SignInFormValues } from "~/schemas/auth";
 import { signInSchema } from "~/schemas/auth";
 
@@ -47,7 +48,15 @@ export default function SignInPage() {
       });
 
       if (!signInResult?.error) {
-        router.push("/app/dashboard");
+        // Get the updated session to check user role
+        const session = await getSession();
+
+        // Redirect based on user role
+        if (session?.user?.role === "ADMIN") {
+          router.push("/app/admin/analytics");
+        } else {
+          router.push("/app/dashboard");
+        }
       } else {
         setError(
           signInResult.error === "CredentialsSignin"
@@ -170,7 +179,7 @@ export default function SignInPage() {
 
               <div className="text-center">
                 <span className="text-sm text-muted-foreground">
-                  Don&apos;t have an account?
+                  Don&apos;t have an account?{" "}
                   <a
                     className="font-medium text-primary underline hover:text-primary/80"
                     href="/app/sign-up"
@@ -189,10 +198,12 @@ export default function SignInPage() {
         <div className="hidden h-full rounded-3xl bg-gradient-to-b from-indigo-100 via-purple-100 to-[#5960d7] lg:block">
           <div className="flex h-full flex-col p-12">
             <div className="flex h-full items-center justify-center">
-              <img
+              <Image
                 className="w-full rounded-lg"
                 alt="Dashboard preview"
                 src="/placeholder.png"
+                width={800}
+                height={600}
               />
             </div>
 

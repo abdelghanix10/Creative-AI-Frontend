@@ -7,18 +7,27 @@ export default async function AdminPage() {
   const session = await auth();
 
   // Get basic stats for dashboard
-  const [totalUsers, activeSubscriptions, totalRevenue] = await Promise.all([
-    db.user.count(),
-    db.subscription.count({
-      where: { status: "active" },
-    }),
-    db.subscription.aggregate({
-      where: { status: "active" },
-      _count: {
-        id: true,
-      },
-    }),
-  ]);
+  const [totalUsers, activeSubscriptions, totalRevenue, totalPlans] =
+    await Promise.all([
+      db.user.count(),
+      db.subscription.count({
+        where: { status: "active" },
+      }),
+      db.subscription
+        .findMany({
+          where: { status: "active" },
+          include: {
+            plan: true,
+          },
+        })
+        .then((subscriptions) => {
+          return subscriptions.reduce(
+            (sum, sub) => sum + (sub.plan?.price ?? 0),
+            0,
+          );
+        }),
+      db.subscriptionPlan.count(),
+    ]);
 
   return (
     <PageLayout
@@ -32,12 +41,13 @@ export default async function AdminPage() {
           Overview of your platform analytics and revenue
         </p>
       </div>
-
       <AdminDashboard
         userId={session!.user!.id}
         initialStats={{
           totalUsers,
           activeSubscriptions,
+          monthlyRevenue: totalRevenue,
+          totalPlans,
         }}
       />
     </PageLayout>

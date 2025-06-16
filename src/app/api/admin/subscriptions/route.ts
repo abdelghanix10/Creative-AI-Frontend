@@ -29,6 +29,7 @@ export async function GET(_request: NextRequest) {
             id: true,
             displayName: true,
             price: true,
+            yearlyPrice: true,
           },
         },
       },

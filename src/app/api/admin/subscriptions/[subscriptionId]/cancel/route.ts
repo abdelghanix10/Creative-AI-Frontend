@@ -4,7 +4,7 @@ import { requireAdmin } from "~/lib/admin-middleware";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2025-04-30.basil",
 });
 
 export async function POST(
@@ -27,25 +27,30 @@ export async function POST(
         { error: "Subscription not found" },
         { status: 404 },
       );
-    }
-
-    // Cancel the subscription in Stripe
+    } // Cancel the subscription in Stripe
     if (subscription.stripeSubscriptionId) {
       try {
         await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
       } catch (error) {
         console.error("Failed to cancel Stripe subscription:", error);
         // Continue with database update even if Stripe fails
+        // This handles cases where Stripe subscription no longer exists
       }
-    }
-
-    // Update the subscription in database
+    } // Update the subscription in database and reset user to free tier
     const updatedSubscription = await db.subscription.update({
       where: { id: subscriptionId },
       data: {
         status: "cancelled",
         cancelAtPeriodEnd: false,
-        canceledAt: new Date(),
+      },
+    });
+
+    // Update user to free tier and remove Stripe customer ID
+    await db.user.update({
+      where: { id: subscription.userId },
+      data: {
+        subscriptionTier: "Free",
+        stripeCustomerId: null,
       },
     });
 

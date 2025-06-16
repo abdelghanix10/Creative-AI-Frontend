@@ -78,21 +78,60 @@ export async function POST(req: Request) {
               stripeSubscriptionId: subscription.id,
               subscriptionTier: plan.name,
               credits: (currentUser?.credits ?? 0) + plan.credits,
-            },          }); // Create subscription record
+            },
+          }); // Get the price ID from the subscription to determine interval
+          const priceId = subscription.items.data[0]?.price.id;
+
+          // Determine the actual interval based on the price ID used
+          let actualInterval: "monthly" | "yearly" = session.metadata
+            .interval as "monthly" | "yearly";
+          if (plan && priceId) {
+            if (priceId === plan.stripeYearlyPriceId) {
+              actualInterval = "yearly";
+            } else if (priceId === plan.stripePriceId) {
+              actualInterval = "monthly";
+            }
+          }
+
+          // Create subscription record
           // Safely convert Stripe timestamps to Date objects
-          const periodStart = subscription.current_period_start 
-            ? new Date(subscription.current_period_start * 1000)
+          const periodStart = (subscription as any).current_period_start
+            ? new Date((subscription as any).current_period_start * 1000)
             : new Date();
-          const periodEnd = subscription.current_period_end 
-            ? new Date(subscription.current_period_end * 1000)
-            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
+
+          // Calculate period end based on interval and Stripe data
+          let periodEnd: Date;
+          if ((subscription as any).current_period_end) {
+            periodEnd = new Date(
+              (subscription as any).current_period_end * 1000,
+            );
+          } else {
+            // Fallback calculation based on interval if Stripe doesn't provide end date
+            const intervalMonths = actualInterval === "yearly" ? 12 : 1;
+            periodEnd = new Date(periodStart);
+            periodEnd.setMonth(periodEnd.getMonth() + intervalMonths);
+          }
+
+          // Log subscription details for debugging
+          console.log(`📅 Subscription Period Details:
+            - Requested Interval: ${session.metadata.interval}
+            - Actual Interval: ${actualInterval}
+            - Price ID: ${priceId}
+            - Plan Monthly Price ID: ${plan?.stripePriceId}
+            - Plan Yearly Price ID: ${plan?.stripeYearlyPriceId}
+            - Start: ${periodStart.toISOString()}
+            - End: ${periodEnd.toISOString()}
+            - Duration: ${Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24))} days
+            - Stripe Period Start: ${(subscription as any).current_period_start}
+            - Stripe Period End: ${(subscription as any).current_period_end}
+            - Subscription ID: ${subscription.id}`);
 
           await createSubscription(
             session.metadata.userId,
             session.metadata.planId,
             subscription.id,
-            subscription.items.data[0]?.price.id ?? "",
-            session.metadata.interval as "monthly" | "yearly",
+            priceId ?? "",
+            actualInterval,
             periodStart,
             periodEnd,
           );
@@ -130,13 +169,33 @@ export async function POST(req: Request) {
         }
         break;
       }
-
       case "customer.subscription.updated": {
         const subscription = event.data.object;
 
-        if (!subscription.metadata?.userId) {
-          console.error("User ID missing from subscription metadata");
-          return new NextResponse("User ID is required", { status: 400 });
+        // First try to get userId from metadata, then fall back to database lookup
+        let userId = subscription.metadata?.userId;
+
+        if (!userId) {
+          console.log(
+            "User ID missing from subscription metadata, looking up by subscription ID",
+          );
+          // Look up user by stripeSubscriptionId
+          const user = await db.user.findFirst({
+            where: { stripeSubscriptionId: subscription.id },
+            select: { id: true },
+          });
+
+          if (!user) {
+            console.error("User not found for subscription:", subscription.id);
+            return new NextResponse("User not found for subscription", {
+              status: 400,
+            });
+          }
+
+          userId = user.id;
+          console.log(
+            `Found user ${userId} for subscription ${subscription.id}`,
+          );
         }
 
         // Get the current subscription from our database to detect changes
@@ -163,16 +222,49 @@ export async function POST(req: Request) {
           currentSubscription &&
           newPlan &&
           currentSubscription.planId !== newPlan.id &&
-          newPlan.price > currentSubscription.plan.price; // Update subscription record with new plan info
+          newPlan.price > currentSubscription.plan.price;
+
+        // Determine the interval based on the price ID
+        let interval: "monthly" | "yearly" = "monthly";
+        if (newPlan) {
+          if (newPriceId === newPlan.stripeYearlyPriceId) {
+            interval = "yearly";
+          } else if (newPriceId === newPlan.stripePriceId) {
+            interval = "monthly";
+          }
+        } // Calculate correct period end based on interval and Stripe data
+        const periodStart = new Date(
+          (subscription as any).current_period_start * 1000,
+        );
+        const periodEnd = new Date(
+          (subscription as any).current_period_end * 1000,
+        );
+
+        // Log subscription update details for debugging
+        console.log(`📅 Subscription Update Details:
+          - Subscription ID: ${subscription.id}
+          - Price ID: ${newPriceId}
+          - Detected Interval: ${interval}
+          - Stripe Period Start: ${(subscription as any).current_period_start}
+          - Stripe Period End: ${(subscription as any).current_period_end}
+          - Calculated Start: ${periodStart.toISOString()}
+          - Calculated End: ${periodEnd.toISOString()}
+          - Duration: ${Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24))} days`); // Update subscription record with new plan info and correct interval
         await updateSubscription(subscription.id, {
           status: subscription.status,
-          currentPeriodStart: new Date(
-            subscription.current_period_start * 1000,
-          ),
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
           ...(newPlan && { planId: newPlan.id }),
         });
+
+        // Also update the interval in the subscription record if we have a plan
+        if (newPlan) {
+          await db.subscription.updateMany({
+            where: { stripeSubscriptionId: subscription.id },
+            data: { interval },
+          });
+        }
 
         // Update user's plan and credits if plan changed
         if (
@@ -181,7 +273,7 @@ export async function POST(req: Request) {
           currentSubscription.planId !== newPlan.id
         ) {
           const user = await db.user.findUnique({
-            where: { id: subscription.metadata.userId },
+            where: { id: userId },
             select: { credits: true, email: true, name: true },
           });
 
@@ -190,9 +282,8 @@ export async function POST(req: Request) {
             const creditDifference = isUpgrade
               ? newPlan.credits - currentSubscription.plan.credits
               : 0;
-
             await db.user.update({
-              where: { id: subscription.metadata.userId },
+              where: { id: userId },
               data: {
                 subscriptionTier: newPlan.name,
                 ...(creditDifference > 0 && {
@@ -232,9 +323,30 @@ export async function POST(req: Request) {
       case "customer.subscription.deleted": {
         const subscription = event.data.object;
 
-        if (!subscription.metadata?.userId) {
-          console.error("User ID missing from subscription metadata");
-          return new NextResponse("User ID is required", { status: 400 });
+        // First try to get userId from metadata, then fall back to database lookup
+        let userId = subscription.metadata?.userId;
+
+        if (!userId) {
+          console.log(
+            "User ID missing from subscription metadata, looking up by subscription ID",
+          );
+          // Look up user by stripeSubscriptionId
+          const user = await db.user.findFirst({
+            where: { stripeSubscriptionId: subscription.id },
+            select: { id: true, email: true, name: true },
+          });
+
+          if (!user) {
+            console.error("User not found for subscription:", subscription.id);
+            return new NextResponse("User not found for subscription", {
+              status: 400,
+            });
+          }
+
+          userId = user.id;
+          console.log(
+            `Found user ${userId} for subscription ${subscription.id}`,
+          );
         }
 
         // Get the Free plan details from database
@@ -249,7 +361,7 @@ export async function POST(req: Request) {
 
         // Revert user to free plan
         await db.user.update({
-          where: { id: subscription.metadata.userId },
+          where: { id: userId },
           data: {
             stripeSubscriptionId: null,
             subscriptionTier: "Free",
@@ -259,7 +371,7 @@ export async function POST(req: Request) {
 
         // Send subscription cancelled email
         const cancelUser = await db.user.findUnique({
-          where: { id: subscription.metadata.userId },
+          where: { id: userId },
           select: { email: true, name: true },
         });
 

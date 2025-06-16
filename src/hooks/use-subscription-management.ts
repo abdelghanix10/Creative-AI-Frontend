@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import {
-  cancelSubscription,
+  cancelUserSubscription,
   getUserBillingHistory,
   createCheckoutSession,
 } from "~/actions/subscription";
@@ -35,11 +35,10 @@ export function useSubscriptionManagement() {
   const [billingHistory, setBillingHistory] = useState<BillingHistory | null>(
     null,
   );
-
-  const cancelUserSubscription = useCallback(async (immediately = false) => {
+  const cancelSubscription = useCallback(async (immediately = false) => {
     try {
       setIsLoading(true);
-      await cancelSubscription("", immediately); // User ID will be extracted from session
+      await cancelUserSubscription(immediately);
       toast.success(
         immediately
           ? "Subscription canceled immediately"
@@ -102,11 +101,10 @@ export function useSubscriptionManagement() {
       toast.error("Failed to open invoice");
     }
   }, []);
-
   return {
     isLoading,
     billingHistory,
-    cancelUserSubscription,
+    cancelSubscription,
     fetchBillingHistory,
     createCheckout,
     downloadInvoice,
@@ -120,7 +118,16 @@ export function useSubscriptionMetrics() {
     activeSubscriptions: number;
     canceledSubscriptions: number;
     totalRevenue: number;
-    planDistribution: Array<{ planId: string; _count: { planId: number } }>;
+    planDistribution: Array<{
+      planId: string;
+      plan: { id: string; name: string; displayName: string };
+      _count: { planId: number };
+    }>;
+    debug?: {
+      successfulPayments: number;
+      paymentsTotal: number;
+      invoicesTotal: number;
+    };
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const fetchMetrics = useCallback(async () => {

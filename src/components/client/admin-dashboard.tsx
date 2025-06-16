@@ -11,6 +11,8 @@ interface AdminDashboardProps {
   initialStats?: {
     totalUsers: number;
     activeSubscriptions: number;
+    monthlyRevenue: number;
+    totalPlans: number;
   };
 }
 
@@ -29,8 +31,8 @@ export function AdminDashboard({
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: initialStats?.totalUsers ?? 0,
     activeSubscriptions: initialStats?.activeSubscriptions ?? 0,
-    monthlyRevenue: 0,
-    totalPlans: 0,
+    monthlyRevenue: initialStats?.monthlyRevenue ?? 0,
+    totalPlans: initialStats?.totalPlans ?? 0,
   });
 
   const fetchDashboardStats = async () => {
