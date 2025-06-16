@@ -55,6 +55,12 @@ export function SubscriptionManagement() {
   const [selectedSubscription, setSelectedSubscription] =
     useState<SubscriptionData | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isReactivateDialogOpen, setIsReactivateDialogOpen] = useState(false);
+  const [subscriptionToCancel, setSubscriptionToCancel] =
+    useState<SubscriptionData | null>(null);
+  const [subscriptionToReactivate, setSubscriptionToReactivate] =
+    useState<SubscriptionData | null>(null);
   const fetchSubscriptions = async (showLoading = true) => {
     try {
       if (showLoading) {
@@ -176,10 +182,35 @@ export function SubscriptionManagement() {
         return "bg-gray-100 text-gray-800";
     }
   };
-
   const handleViewDetails = (subscription: SubscriptionData) => {
     setSelectedSubscription(subscription);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleCancelSubscription = (subscription: SubscriptionData) => {
+    setSubscriptionToCancel(subscription);
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleReactivateSubscription = (subscription: SubscriptionData) => {
+    setSubscriptionToReactivate(subscription);
+    setIsReactivateDialogOpen(true);
+  };
+
+  const confirmCancelSubscription = async () => {
+    if (!subscriptionToCancel) return;
+
+    await cancelSubscription(subscriptionToCancel.id);
+    setIsCancelDialogOpen(false);
+    setSubscriptionToCancel(null);
+  };
+
+  const confirmReactivateSubscription = async () => {
+    if (!subscriptionToReactivate) return;
+
+    await reactivateSubscription(subscriptionToReactivate.id);
+    setIsReactivateDialogOpen(false);
+    setSubscriptionToReactivate(null);
   };
 
   // Calculate statistics
@@ -385,7 +416,9 @@ export function SubscriptionManagement() {
                               {subscription.status}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
-                              {subscription.interval == "monthly" ? formatAmount(subscription.plan.price) : formatAmount(subscription.plan.yearlyPrice)}
+                              {subscription.interval == "monthly"
+                                ? formatAmount(subscription.plan.price)
+                                : formatAmount(subscription.plan.yearlyPrice)}
                               /{subscription.interval}
                             </span>
                           </div>
@@ -412,13 +445,12 @@ export function SubscriptionManagement() {
                         onClick={() => handleViewDetails(subscription)}
                       >
                         Details
-                      </Button>
-
+                      </Button>{" "}
                       {subscription.status === "active" ? (
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => cancelSubscription(subscription.id)}
+                          onClick={() => handleCancelSubscription(subscription)}
                           disabled={isLoading}
                         >
                           <X className="h-4 w-4" />
@@ -428,7 +460,7 @@ export function SubscriptionManagement() {
                           variant="default"
                           size="sm"
                           onClick={() =>
-                            reactivateSubscription(subscription.id)
+                            handleReactivateSubscription(subscription)
                           }
                           disabled={isLoading}
                         >
@@ -452,7 +484,6 @@ export function SubscriptionManagement() {
               Detailed information about the subscription.
             </DialogDescription>
           </DialogHeader>
-
           {selectedSubscription && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -530,14 +561,115 @@ export function SubscriptionManagement() {
                 </div>
               )}
             </div>
-          )}
-
+          )}{" "}
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsDetailsDialogOpen(false)}
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Cancel Subscription Confirmation Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this subscription? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {subscriptionToCancel && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                <strong>Customer:</strong>{" "}
+                {subscriptionToCancel.user.name ??
+                  subscriptionToCancel.user.email}
+              </p>
+              <p className="text-sm">
+                <strong>Plan:</strong> {subscriptionToCancel.plan.displayName}
+              </p>
+              <p className="text-sm">
+                <strong>Amount:</strong>{" "}
+                {subscriptionToCancel.interval === "monthly"
+                  ? formatAmount(subscriptionToCancel.plan.price)
+                  : formatAmount(subscriptionToCancel.plan.yearlyPrice)}
+                /{subscriptionToCancel.interval}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCancelSubscription}
+              disabled={isLoading}
+            >
+              {isLoading ? "Cancelling..." : "Confirm Cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Reactivate Subscription Confirmation Dialog */}
+      <Dialog
+        open={isReactivateDialogOpen}
+        onOpenChange={setIsReactivateDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reactivate Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to reactivate this subscription? The
+              customer will be charged immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          {subscriptionToReactivate && (
+            <div className="space-y-2">
+              <p className="text-sm">
+                <strong>Customer:</strong>{" "}
+                {subscriptionToReactivate.user.name ??
+                  subscriptionToReactivate.user.email}
+              </p>
+              <p className="text-sm">
+                <strong>Plan:</strong>{" "}
+                {subscriptionToReactivate.plan.displayName}
+              </p>
+              <p className="text-sm">
+                <strong>Amount:</strong>{" "}
+                {subscriptionToReactivate.interval === "monthly"
+                  ? formatAmount(subscriptionToReactivate.plan.price)
+                  : formatAmount(subscriptionToReactivate.plan.yearlyPrice)}
+                /{subscriptionToReactivate.interval}
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsReactivateDialogOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={confirmReactivateSubscription}
+              disabled={isLoading}
+            >
+              {isLoading ? "Reactivating..." : "Confirm Reactivate"}
             </Button>
           </DialogFooter>
         </DialogContent>

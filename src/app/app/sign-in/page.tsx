@@ -40,6 +40,7 @@ export default function SignInPage() {
   const onSubmit = async (data: SignInFormValues) => {
     try {
       setIsLoading(true);
+      setError(null); // Clear any existing error when attempting to sign in
 
       const signInResult = await signIn("credentials", {
         redirect: false,

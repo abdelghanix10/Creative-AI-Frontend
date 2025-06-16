@@ -1,6 +1,6 @@
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
-import { AdminDashboard } from "~/components/client/admin-dashboard";
+import { AdminDashboard } from "~/components/client/admin/admin-dashboard";
 import { PageLayout } from "~/components/client/page-layout";
 
 export default async function AdminPage() {

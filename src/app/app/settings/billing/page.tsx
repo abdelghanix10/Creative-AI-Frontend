@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import {
@@ -75,33 +75,35 @@ export default function BillingPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelType, setCancelType] = useState<"immediate" | "period-end">(
     "period-end",
-  );
-  // Add a ref to track if data has been fetched
+  ); // Add a ref to track if data has been fetched
   const dataFetched = useRef(false);
-
-  // Memoized function to refetch all data after successful subscription
-  const refetchAllData = useCallback(async () => {
-    await Promise.all([refetchSubscription(), refetchCredits()]);
-    // Reset the dataFetched flag to allow refetching after subscription changes
-    dataFetched.current = true;
-  }, [refetchSubscription, refetchCredits]);
-
+  const hasProcessedUrlParams = useRef(false);
+  // Handle URL parameters (success/canceled) separately
   useEffect(() => {
     const success = searchParams.get("success");
     const canceled = searchParams.get("canceled");
 
-    if (success) {
-      toast.success("Subscription updated successfully!");
-      // Refetch all subscription-related data after successful upgrade
-      void refetchAllData();
-      router.replace("/app/settings/billing");
-    }
+    // Only process URL params once per navigation
+    if ((success || canceled) && !hasProcessedUrlParams.current) {
+      hasProcessedUrlParams.current = true;
 
-    if (canceled) {
-      toast.error("Subscription update canceled.");
+      if (success) {
+        toast.success("Subscription updated successfully!");
+        // Refetch subscription data only
+        void Promise.all([refetchSubscription(), refetchCredits()]);
+      }
+
+      if (canceled) {
+        toast.error("Subscription update canceled.");
+      }
+
+      // Clean up URL
       router.replace("/app/settings/billing");
+    } else if (!success && !canceled) {
+      // Reset the flag when there are no URL params
+      hasProcessedUrlParams.current = false;
     }
-  }, [searchParams, router, refetchAllData]);
+  }, [searchParams, router, refetchSubscription, refetchCredits]);
 
   // Fetch plans and user data only once when the page loads
   useEffect(() => {
@@ -146,7 +148,7 @@ export default function BillingPage() {
 
     if (session?.user) {
       void fetchData();
-    } else {
+    } else if (session !== undefined) {
       // Still fetch plans for guest users, but only once
       void getSubscriptionPlans()
         .then((plans) => {
@@ -187,7 +189,7 @@ export default function BillingPage() {
           ? "Subscription canceled immediately. Refund will be processed if applicable."
           : "Subscription will be canceled at the end of your current billing period",
       );
-      await refetchAllData();
+      await Promise.all([refetchSubscription(), refetchCredits()]);
       setCancelDialogOpen(false);
     } catch (error) {
       console.error("Error canceling subscription:", error);

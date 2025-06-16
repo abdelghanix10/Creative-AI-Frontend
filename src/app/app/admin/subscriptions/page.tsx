@@ -1,5 +1,5 @@
 import { PageLayout } from "~/components/client/page-layout";
-import { SubscriptionManagement } from "~/components/client/subscription-management";
+import { SubscriptionManagement } from "~/components/client/admin/subscription-management";
 
 export default function AdminSubscriptionsPage() {
   return (

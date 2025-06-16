@@ -1,5 +1,5 @@
 import { PageLayout } from "~/components/client/page-layout";
-import { UserManagement } from "~/components/client/user-management";
+import { UserManagement } from "~/components/client/admin/user-management";
 
 export default function AdminUsersPage() {
   return (

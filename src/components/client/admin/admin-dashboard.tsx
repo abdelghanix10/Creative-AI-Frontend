@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Users, CreditCard, DollarSign, Activity } from "lucide-react";
-import { SubscriptionMetrics } from "./subscription-metrics";
+import { SubscriptionMetrics } from "~/components/client/admin/subscription-metrics";
 
 interface AdminDashboardProps {
   userId: string;
@@ -16,39 +16,17 @@ interface AdminDashboardProps {
   };
 }
 
-interface DashboardStats {
-  totalUsers: number;
-  activeSubscriptions: number;
-  monthlyRevenue: number;
-  totalPlans: number;
-}
-
 export function AdminDashboard({
   userId: _userId,
   initialStats,
 }: AdminDashboardProps) {
-  const [isLoading, setIsLoading] = useState(!initialStats);
-  const [stats, setStats] = useState<DashboardStats>({
+  const [isLoading] = useState(!initialStats);
+  const [stats] = useState({
     totalUsers: initialStats?.totalUsers ?? 0,
     activeSubscriptions: initialStats?.activeSubscriptions ?? 0,
     monthlyRevenue: initialStats?.monthlyRevenue ?? 0,
     totalPlans: initialStats?.totalPlans ?? 0,
   });
-
-  const fetchDashboardStats = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch("/api/admin/dashboard-stats");
-      if (response.ok) {
-        const data = (await response.json()) as DashboardStats;
-        setStats(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard stats:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -56,12 +34,6 @@ export function AdminDashboard({
       currency: "USD",
     }).format(amount);
   };
-
-  useEffect(() => {
-    if (!initialStats) {
-      void fetchDashboardStats();
-    }
-  }, [initialStats]);
 
   if (isLoading && !initialStats) {
     return (

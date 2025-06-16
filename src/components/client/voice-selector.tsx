@@ -3,26 +3,46 @@ import {
   IoChevronDown,
   IoChevronUp,
   IoCloudUploadOutline,
+  IoPlay,
+  IoStop,
 } from "react-icons/io5";
 import { useVoiceStore } from "~/stores/voice-store";
-import { ServiceType } from "~/types/services";
+import type { ServiceType } from "~/types/services";
+import {
+  generateTextToSpeech,
+  generationStatus,
+} from "~/actions/generate-speech";
+import { useToast } from "~/hooks/use-toast";
 
 export function VoiceSelector({ service }: { service: ServiceType }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const getVoices = useVoiceStore((state) => state.getVoices);
   const getSelectedVoice = useVoiceStore((state) => state.getSelectedVoice);
   const selectVoice = useVoiceStore((state) => state.selectVoice);
+  const loadVoices = useVoiceStore((state) => state.loadVoices);
 
   const voices = getVoices(service);
   const selectedVoice = getSelectedVoice(service);
+
+  // Add voice loading initialization
+  useEffect(() => {
+    void loadVoices().catch((error) => {
+      console.error("Failed to load voices:", error);
+    });
+  }, [loadVoices]);
 
   // State for file upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // State for voice preview
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioRefs = useRef<Record<string, HTMLAudioElement>>({});
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -42,6 +62,94 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
+
+  // Voice preview functionality
+  const handlePlayVoice = async (voiceId: string) => {
+    if (playingVoiceId === voiceId) {
+      // Stop playing
+      const audio = audioRefs.current[voiceId];
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+      setPlayingVoiceId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (playingVoiceId) {
+      const currentAudio = audioRefs.current[playingVoiceId];
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+    }
+
+    try {
+      setPlayingVoiceId(voiceId);
+
+      // Generate a sample audio for the voice
+      const result = await generateTextToSpeech(
+        "Hello, this is a voice preview.",
+        voiceId,
+      );
+
+      // Poll for the audio generation to complete
+      const pollForAudio = async (audioId: string): Promise<string | null> => {
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max
+
+        while (attempts < maxAttempts) {
+          const status = await generationStatus(audioId);
+
+          if (status.success && status.audioUrl) {
+            return status.audioUrl;
+          }
+
+          if (!status.success) {
+            throw new Error("Voice generation failed");
+          }
+
+          // Wait 1 second before polling again
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          attempts++;
+        }
+
+        throw new Error("Voice preview generation timed out");
+      };
+
+      const audioUrl = await pollForAudio(result.audioId);
+
+      if (!audioUrl) {
+        throw new Error("Failed to get audio URL");
+      }
+
+      // Create or get audio element
+      if (!audioRefs.current[voiceId]) {
+        audioRefs.current[voiceId] = new Audio();
+      }
+
+      const audio = audioRefs.current[voiceId];
+      if (audio) {
+        audio.src = audioUrl;
+
+        // Set up event listeners
+        audio.onended = () => {
+          setPlayingVoiceId(null);
+        };
+
+        audio.onerror = () => {
+          setPlayingVoiceId(null);
+          console.error("Error playing voice preview");
+        };
+
+        await audio.play();
+      }
+    } catch (error) {
+      console.error("Error generating voice preview:", error);
+      setPlayingVoiceId(null);
+    }
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -101,21 +209,36 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
       });
 
       if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ detail: "Upload failed" }));
-        throw new Error(errorData.detail || "Failed to upload voice.");
+        let errorMessage = "Failed to upload voice.";
+        try {
+          const errorData = (await response.json()) as { detail?: string };
+          errorMessage = errorData.detail ?? errorMessage;
+        } catch {
+          // If JSON parsing fails, use default message
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json(); // This might not be needed if the 202 response has no body or irrelevant body
-      // alert(`Voice upload initiated. It will be processed in the background.`);
+      const result: unknown = await response.json();
+
+      // Show success toast
+      toast({
+        title: "Voice Upload Successful",
+        description:
+          "Your voice has been uploaded and is being processed in the background.",
+      });
+
       console.log(
         "Voice upload initiated. It will be processed in the background.",
         result,
       );
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      // Optionally, trigger a refresh of the voice list after a delay, or provide a manual refresh button
+
+      // Reload voices after successful upload
+      void loadVoices().catch((error) => {
+        console.error("Failed to reload voices after upload:", error);
+      });
     } catch (error) {
       console.error("Upload error:", error);
       setUploadError(
@@ -165,6 +288,25 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
                   style={{ background: voice.gradientColors }}
                 />
                 <span className="text-sm">{voice.name}</span>
+                {/* Play button for voice preview */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handlePlayVoice(voice.id);
+                  }}
+                  className="ml-auto rounded-full p-1 text-muted-foreground hover:bg-muted"
+                  title={
+                    playingVoiceId === voice.id
+                      ? "Stop preview"
+                      : "Play preview"
+                  }
+                >
+                  {playingVoiceId === voice.id ? (
+                    <IoStop className="h-4 w-4" />
+                  ) : (
+                    <IoPlay className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             ))}
           </div>

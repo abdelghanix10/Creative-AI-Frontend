@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import toast from "react-hot-toast";
 import {
   cancelUserSubscription,
-  getUserBillingHistory,
   createCheckoutSession,
 } from "~/actions/subscription";
 
@@ -54,27 +53,6 @@ export function useSubscriptionManagement() {
     }
   }, []);
 
-  const fetchBillingHistory = useCallback(async (limit = 20) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/billing/history?limit=${limit}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch billing history");
-      }
-
-      const data = await response.json();
-      setBillingHistory(data);
-      return data;
-    } catch (error) {
-      console.error("Error fetching billing history:", error);
-      toast.error("Failed to load billing history");
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const createCheckout = useCallback(
     async (planId: string, interval: "monthly" | "yearly" = "monthly") => {
       try {
@@ -105,7 +83,6 @@ export function useSubscriptionManagement() {
     isLoading,
     billingHistory,
     cancelSubscription,
-    fetchBillingHistory,
     createCheckout,
     downloadInvoice,
   };

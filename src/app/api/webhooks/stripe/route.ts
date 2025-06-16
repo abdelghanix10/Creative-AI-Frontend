@@ -10,14 +10,6 @@ import {
   updateInvoice,
   createPayment,
 } from "~/actions/subscription";
-import {
-  sendWelcomeEmail,
-  sendPaymentSuccessEmail,
-  sendPaymentFailedEmail,
-  sendSubscriptionCancelledEmail,
-  sendInvoiceEmail,
-  sendSubscriptionUpgradeEmail,
-} from "~/lib/email";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -40,7 +32,6 @@ export async function POST(req: Request) {
   }
   try {
     console.log(`🔄 Processing Stripe webhook: ${event.type}`);
-    console.log(`📧 Email enabled: ${process.env.EMAIL_ENABLED}`);
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -136,29 +127,6 @@ export async function POST(req: Request) {
             periodEnd,
           );
 
-          // Send welcome email
-          const welcomeUser = await db.user.findUnique({
-            where: { id: session.metadata.userId },
-            select: { email: true, name: true },
-          });
-          if (welcomeUser?.email) {
-            try {
-              console.log(`📧 Sending welcome email to: ${welcomeUser.email}`);
-              await sendWelcomeEmail(
-                welcomeUser.email,
-                welcomeUser.name ?? "User",
-                plan.displayName,
-                plan.credits.toString(),
-              );
-              console.log(
-                `✅ Welcome email sent successfully to: ${welcomeUser.email}`,
-              );
-            } catch (emailError) {
-              console.error("❌ Failed to send welcome email:", emailError);
-            }
-          } else {
-            console.log("⚠️ No email address found for welcome email");
-          }
           console.log(
             "Subscription created successfully for user:",
             session.metadata.userId,
@@ -250,6 +218,7 @@ export async function POST(req: Request) {
           - Calculated Start: ${periodStart.toISOString()}
           - Calculated End: ${periodEnd.toISOString()}
           - Duration: ${Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24))} days`); // Update subscription record with new plan info and correct interval
+
         await updateSubscription(subscription.id, {
           status: subscription.status,
           currentPeriodStart: periodStart,
@@ -291,26 +260,6 @@ export async function POST(req: Request) {
                 }),
               },
             });
-
-            // Send upgrade email
-            if (isUpgrade && user.email) {
-              try {
-                console.log(
-                  `📧 Sending upgrade email to: ${user.email} for ${currentSubscription.plan.displayName} → ${newPlan.displayName}`,
-                );
-                await sendSubscriptionUpgradeEmail(
-                  user.email,
-                  user.name ?? "User",
-                  currentSubscription.plan.displayName,
-                  newPlan.displayName,
-                );
-                console.log(
-                  `✅ Upgrade email sent successfully to: ${user.email}`,
-                );
-              } catch (emailError) {
-                console.error("❌ Failed to send upgrade email:", emailError);
-              }
-            }
           }
         }
 
@@ -357,9 +306,7 @@ export async function POST(req: Request) {
         // Update subscription record
         await updateSubscription(subscription.id, {
           status: "canceled",
-        });
-
-        // Revert user to free plan
+        }); // Revert user to free plan
         await db.user.update({
           where: { id: userId },
           data: {
@@ -369,23 +316,6 @@ export async function POST(req: Request) {
           },
         });
 
-        // Send subscription cancelled email
-        const cancelUser = await db.user.findUnique({
-          where: { id: userId },
-          select: { email: true, name: true },
-        });
-
-        if (cancelUser?.email) {
-          try {
-            await sendSubscriptionCancelledEmail(
-              cancelUser.email,
-              cancelUser.name ?? "User",
-              new Date(subscription.canceled_at! * 1000).toLocaleDateString(),
-            );
-          } catch (emailError) {
-            console.error("Failed to send cancellation email:", emailError);
-          }
-        }
         console.log("Subscription canceled successfully:", subscription.id);
         break;
       }
@@ -425,29 +355,6 @@ export async function POST(req: Request) {
               invoice.due_date ? new Date(invoice.due_date * 1000) : undefined,
             );
 
-            // Send invoice email
-            if (user.email) {
-              try {
-                console.log(
-                  `📧 Sending invoice email to: ${user.email}, amount: ${invoice.amount_due / 100}`,
-                );
-                await sendInvoiceEmail(
-                  user.email,
-                  user.name ?? "User",
-                  (invoice.amount_due / 100).toString(),
-                  invoice.currency.toUpperCase(),
-                  invoice.due_date
-                    ? new Date(invoice.due_date * 1000).toLocaleDateString()
-                    : "N/A",
-                  invoice.hosted_invoice_url ?? "",
-                );
-                console.log(
-                  `✅ Invoice email sent successfully to: ${user.email}`,
-                );
-              } catch (emailError) {
-                console.error("❌ Failed to send invoice email:", emailError);
-              }
-            }
             console.log("✅ Invoice created successfully:", invoice.id);
           } else {
             const customerStr =
@@ -537,29 +444,6 @@ export async function POST(req: Request) {
                 paymentIntent.description ?? undefined,
               );
 
-              // Send payment success email
-              if (invoice.user.email) {
-                try {
-                  console.log(
-                    `📧 Sending payment success email to: ${invoice.user.email}`,
-                  );
-                  await sendPaymentSuccessEmail(
-                    invoice.user.email,
-                    invoice.user.name ?? "User",
-                    (paymentIntent.amount / 100).toString(),
-                    paymentIntent.currency.toUpperCase(),
-                    new Date().toLocaleDateString(),
-                  );
-                  console.log(
-                    `✅ Payment success email sent to: ${invoice.user.email}`,
-                  );
-                } catch (emailError) {
-                  console.error(
-                    "❌ Failed to send payment success email:",
-                    emailError,
-                  );
-                }
-              }
               console.log("✅ Payment created successfully:", paymentIntent.id);
             } else {
               console.log(
@@ -605,30 +489,6 @@ export async function POST(req: Request) {
                 paymentIntent.description ?? undefined,
               );
 
-              // Send payment failed email
-              if (invoice.user.email) {
-                try {
-                  console.log(
-                    `📧 Sending payment failed email to: ${invoice.user.email}`,
-                  );
-                  await sendPaymentFailedEmail(
-                    invoice.user.email,
-                    invoice.user.name ?? "User",
-                    (paymentIntent.amount / 100).toString(),
-                    paymentIntent.currency.toUpperCase(),
-                    paymentIntent.last_payment_error?.message ??
-                      "Payment failed",
-                  );
-                  console.log(
-                    `✅ Payment failed email sent to: ${invoice.user.email}`,
-                  );
-                } catch (emailError) {
-                  console.error(
-                    "❌ Failed to send payment failed email:",
-                    emailError,
-                  );
-                }
-              }
               console.log("❌ Failed payment recorded:", paymentIntent.id);
             }
           }

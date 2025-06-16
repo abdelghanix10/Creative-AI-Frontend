@@ -1,4 +1,4 @@
-import { AdminSettings } from "~/components/client/admin-settings";
+import { AdminSettings } from "~/components/client/admin/admin-settings";
 import { PageLayout } from "~/components/client/page-layout";
 
 export default function AdminSettingsPage() {
