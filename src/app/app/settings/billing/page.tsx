@@ -10,6 +10,7 @@ import {
   getUserInvoices,
   cancelUserSubscription,
   getLastCanceledSubscription,
+  reactivateSubscription,
 } from "~/actions/subscription";
 import { PageLayout } from "~/components/client/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -154,7 +155,9 @@ export default function BillingPage() {
               const lastCanceled = await getLastCanceledSubscription(
                 session.user.id,
               );
-              setLastCanceledSubscription(lastCanceled);
+              setLastCanceledSubscription(
+                lastCanceled as LastCanceledSubscription | null,
+              );
             } catch (error) {
               console.error(
                 "Error fetching last canceled subscription:",
@@ -231,44 +234,16 @@ export default function BillingPage() {
     }
   }; // Handle subscription reactivation
   const handleReactivateSubscription = async () => {
-    // Use subscription if available, otherwise use lastCanceledSubscription
-    const targetSubscription = subscription ?? lastCanceledSubscription;
-
-    if (!targetSubscription?.id) {
-      toast.error("No subscription found to reactivate");
-      return;
-    }
-
     try {
       setLoading("reactivate");
-      const response = await fetch(
-        `/api/admin/subscriptions/${String(targetSubscription.id)}/reactivate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      ); // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data: {
-        subscription?: unknown;
-        message?: string;
-        error?: string;
-        action?: string;
-      } = await response.json();
+      const result = await reactivateSubscription();
 
-      if (!response.ok) {
-        // Check if we need to redirect to checkout
-        if (data.action === "redirect_to_checkout") {
-          toast.error(data.message ?? "Customer needs to complete checkout");
-          // You can add checkout redirection logic here if needed
-          return;
-        }
-        throw new Error(data.error ?? "Failed to reactivate subscription");
+      if (result.success) {
+        toast.success(result.message);
+        await Promise.all([refetchSubscription(), refetchCredits()]);
+      } else {
+        toast.error("Failed to reactivate subscription");
       }
-
-      toast.success(data.message ?? "Subscription reactivated successfully!");
-      await Promise.all([refetchSubscription(), refetchCredits()]);
     } catch (error) {
       console.error("Error reactivating subscription:", error);
       const errorMessage =

@@ -15,18 +15,6 @@ export interface BillingHistory {
     paidAt?: Date | null;
     createdAt: Date;
   }>;
-  payments: Array<{
-    id: string;
-    amount: number;
-    status: string;
-    paymentMethod?: string | null;
-    description?: string | null;
-    createdAt: Date;
-    invoice?: {
-      id: string;
-      description?: string | null;
-    } | null;
-  }>;
 }
 
 export function useSubscriptionManagement() {
@@ -100,11 +88,6 @@ export function useSubscriptionMetrics() {
       plan: { id: string; name: string; displayName: string };
       _count: { planId: number };
     }>;
-    debug?: {
-      successfulPayments: number;
-      paymentsTotal: number;
-      invoicesTotal: number;
-    };
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const fetchMetrics = useCallback(async () => {
@@ -120,8 +103,17 @@ export function useSubscriptionMetrics() {
         }
         return null;
       }
-
-      const data = await response.json();
+      const data = (await response.json()) as {
+        totalSubscriptions: number;
+        activeSubscriptions: number;
+        canceledSubscriptions: number;
+        totalRevenue: number;
+        planDistribution: Array<{
+          planId: string;
+          plan: { id: string; name: string; displayName: string };
+          _count: { planId: number };
+        }>;
+      };
       setMetrics(data);
       return data;
     } catch (error) {

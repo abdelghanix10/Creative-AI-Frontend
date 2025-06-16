@@ -79,11 +79,13 @@ export const authConfig = {
             },
           });
 
-          // If not found by email, try username
+          // If not found by email, try username (case-insensitive)
           if (!user) {
-            user = await db.user.findUnique({
+            const allUsers = await db.user.findMany({
               where: {
-                username: emailOrUsername,
+                username: {
+                  not: null,
+                },
               },
               select: {
                 id: true,
@@ -97,6 +99,12 @@ export const authConfig = {
                 isActive: true,
               },
             });
+
+            user =
+              allUsers.find(
+                (u) =>
+                  u.username?.toLowerCase() === emailOrUsername.toLowerCase(),
+              ) ?? null;
           }
 
           if (!user) {

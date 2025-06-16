@@ -30,15 +30,6 @@ export async function getUserInvoices(userId: string, limit = 10) {
   });
 }
 
-export async function getUserPayments(userId: string, limit = 10) {
-  return await db.payment.findMany({
-    where: { userId },
-    include: { invoice: true },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-}
-
 export async function createCheckoutSession(
   planId: string,
   interval: "monthly" | "yearly" = "monthly",
@@ -318,65 +309,6 @@ export async function updateInvoice(
   }
 }
 
-// Create payment record
-export async function createPayment(
-  userId: string,
-  invoiceId: string | null,
-  stripePaymentId: string,
-  amount: number,
-  currency = "usd",
-  status: string,
-  paymentMethod?: string,
-  description?: string,
-) {
-  try {
-    const payment = await db.payment.create({
-      data: {
-        userId,
-        invoiceId,
-        stripePaymentId,
-        amount: amount / 100, // Convert cents to dollars
-        currency,
-        status,
-        paymentMethod,
-        description,
-      },
-    });
-
-    return payment;
-  } catch (error) {
-    console.error("Error creating payment:", error);
-    throw new Error("Failed to create payment");
-  }
-}
-
-// Update payment status
-export async function updatePayment(
-  stripePaymentId: string,
-  data: {
-    status?: string;
-    refunded?: boolean;
-    refundedAmount?: number;
-  },
-) {
-  try {
-    const payment = await db.payment.update({
-      where: { stripePaymentId },
-      data: {
-        ...data,
-        refundedAmount: data.refundedAmount
-          ? data.refundedAmount / 100
-          : undefined,
-      },
-    });
-
-    return payment;
-  } catch (error) {
-    console.error("Error updating payment:", error);
-    throw new Error("Failed to update payment");
-  }
-}
-
 // Get subscription by Stripe ID
 export async function getSubscriptionByStripeId(stripeSubscriptionId: string) {
   try {
@@ -467,24 +399,16 @@ export async function syncSubscriptionPlans() {
   }
 }
 
-// Get user's billing history (invoices and payments)
+// Get user's billing history (invoices only)
 export async function getUserBillingHistory(userId: string, limit = 20) {
   try {
-    const [invoices, payments] = await Promise.all([
-      db.invoice.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-      }),
-      db.payment.findMany({
-        where: { userId },
-        include: { invoice: true },
-        orderBy: { createdAt: "desc" },
-        take: limit,
-      }),
-    ]);
+    const invoices = await db.invoice.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
 
-    return { invoices, payments };
+    return { invoices };
   } catch (error) {
     console.error("Error fetching billing history:", error);
     throw new Error("Failed to fetch billing history");
@@ -523,25 +447,17 @@ export async function getSubscriptionMetrics() {
   if (!session?.user.id) {
     throw new Error("User not authenticated");
   }
-
   try {
     const [
       totalSubscriptions,
       activeSubscriptions,
       canceledSubscriptions,
-      successfulPayments,
-      totalRevenueFromPayments,
       totalRevenueFromInvoices,
       activeSubscriptionsWithPlans,
     ] = await Promise.all([
       db.subscription.count(),
       db.subscription.count({ where: { status: "active" } }),
       db.subscription.count({ where: { status: "canceled" } }),
-      db.payment.count({ where: { status: "succeeded" } }),
-      db.payment.aggregate({
-        where: { status: "succeeded" },
-        _sum: { amount: true },
-      }),
       db.invoice.aggregate({
         where: { status: "paid" },
         _sum: { amount: true },
@@ -561,12 +477,8 @@ export async function getSubscriptionMetrics() {
       }),
     ]);
 
-    // Calculate total revenue from both payments and invoices
-    const paymentsTotal = totalRevenueFromPayments._sum.amount ?? 0;
-    const invoicesTotal = totalRevenueFromInvoices._sum.amount ?? 0;
-
-    // Use the higher value (in case of data inconsistency) or sum them if they're tracking different things
-    const totalRevenue = Math.max(paymentsTotal, invoicesTotal);
+    // Calculate total revenue from invoices
+    const totalRevenue = totalRevenueFromInvoices._sum.amount ?? 0;
 
     // Process plan distribution
     const planDistribution = activeSubscriptionsWithPlans.reduce(
@@ -588,16 +500,11 @@ export async function getSubscriptionMetrics() {
         plan: { id: string; name: string; displayName: string };
         _count: { planId: number };
       }>,
-    );
-
-    // Debug logging
+    ); // Debug logging
     console.log("📊 Subscription Metrics Debug:", {
       totalSubscriptions,
       activeSubscriptions,
       canceledSubscriptions,
-      successfulPayments,
-      paymentsTotal,
-      invoicesTotal,
       totalRevenue,
       planDistribution: planDistribution.length,
     });
@@ -608,11 +515,6 @@ export async function getSubscriptionMetrics() {
       canceledSubscriptions,
       totalRevenue,
       planDistribution,
-      debug: {
-        successfulPayments,
-        paymentsTotal,
-        invoicesTotal,
-      },
     };
   } catch (error) {
     console.error("Error fetching subscription metrics:", error);
@@ -752,4 +654,199 @@ export async function getLastCanceledSubscription(userId: string) {
     include: { plan: true },
     orderBy: { updatedAt: "desc" },
   });
+}
+
+// Reactivate subscription
+export async function reactivateSubscription() {
+  const session = await auth();
+  if (!session?.user.id) {
+    throw new Error("User not authenticated");
+  }
+
+  const userId = session.user.id;
+
+  // Get the user's subscription (could be active but set to cancel, or canceled)
+  const subscription = await db.subscription.findFirst({
+    where: {
+      userId,
+    },
+    include: { plan: true },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  if (!subscription) {
+    throw new Error("No subscription found");
+  }
+
+  if (!subscription.stripeSubscriptionId) {
+    throw new Error("No Stripe subscription ID found");
+  }
+
+  // Get the user to ensure they have a Stripe customer ID
+  const user = await db.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user?.stripeCustomerId) {
+    throw new Error("User or Stripe customer not found");
+  }
+
+  // Check current status in Stripe
+  const stripeSubscription = await stripe.subscriptions.retrieve(
+    subscription.stripeSubscriptionId,
+  );
+
+  if (
+    stripeSubscription.status === "active" &&
+    !stripeSubscription.cancel_at_period_end
+  ) {
+    // Already active and not set to cancel
+    return {
+      success: true,
+      message: "Subscription is already active",
+    };
+  }
+  if (
+    stripeSubscription.status === "active" &&
+    stripeSubscription.cancel_at_period_end
+  ) {
+    // Active but set to cancel at period end - remove the cancellation
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    // Update the subscription in database
+    const updatedSubscription = await db.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "active",
+        cancelAtPeriodEnd: false,
+      },
+    });
+
+    return {
+      success: true,
+      subscription: updatedSubscription,
+      message: "Subscription reactivated successfully",
+    };
+  }
+
+  // If subscription is canceled in Stripe, we cannot reactivate it directly
+  if (stripeSubscription.status === "canceled") {
+    // Check if customer has any payment methods
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: user.stripeCustomerId,
+      type: "card",
+    });
+
+    if (paymentMethods.data.length === 0) {
+      throw new Error(
+        "Cannot reactivate canceled subscription - no payment method attached to customer. Please go through checkout process again.",
+      );
+    }
+
+    // If customer has payment methods, try to create a new subscription
+    try {
+      // Get the price ID based on the plan and interval
+      const priceId =
+        subscription.interval === "yearly"
+          ? subscription.plan.stripeYearlyPriceId
+          : subscription.plan.stripePriceId;
+
+      if (!priceId) {
+        throw new Error("Price ID not found for plan");
+      }
+
+      // Create a new subscription in Stripe with default payment method
+      const newStripeSubscription = await stripe.subscriptions.create({
+        customer: user.stripeCustomerId,
+        items: [{ price: priceId }],
+        default_payment_method: paymentMethods.data[0]?.id,
+        metadata: {
+          userId: user.id,
+          planId: subscription.planId,
+          interval: subscription.interval,
+        },
+      }); // Update the subscription in database with new Stripe subscription ID
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      const periodStart = (newStripeSubscription as any).current_period_start
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          new Date((newStripeSubscription as any).current_period_start * 1000)
+        : new Date();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+      const periodEnd = (newStripeSubscription as any).current_period_end
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          new Date((newStripeSubscription as any).current_period_end * 1000)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default to 30 days from now
+
+      const updatedSubscription = await db.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: "active",
+          cancelAtPeriodEnd: false,
+          stripeSubscriptionId: newStripeSubscription.id,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        },
+      });
+
+      return {
+        success: true,
+        subscription: updatedSubscription,
+        message: "New subscription created and reactivated successfully",
+      };
+    } catch (stripeError: unknown) {
+      const errorMessage =
+        stripeError instanceof Error ? stripeError.message : "Unknown error";
+      throw new Error(
+        `Cannot reactivate canceled subscription: ${errorMessage}. Please go through checkout process again.`,
+      );
+    }
+  }
+
+  // For other statuses (incomplete, past_due, etc.), try to reactivate
+  if (stripeSubscription.cancel_at_period_end) {
+    // If subscription is set to cancel at period end, remove that setting
+    const updatedStripeSubscription = await stripe.subscriptions.update(
+      subscription.stripeSubscriptionId,
+      {
+        cancel_at_period_end: false,
+      },
+    );
+
+    // Update the subscription in database
+    const updatedSubscription = await db.subscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: updatedStripeSubscription.status as
+          | "active"
+          | "canceled"
+          | "incomplete"
+          | "incomplete_expired"
+          | "past_due"
+          | "trialing"
+          | "unpaid",
+        cancelAtPeriodEnd: false,
+        currentPeriodStart: new Date(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          (updatedStripeSubscription as any).current_period_start * 1000,
+        ),
+        currentPeriodEnd: new Date(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          (updatedStripeSubscription as any).current_period_end * 1000,
+        ),
+      },
+    });
+
+    return {
+      success: true,
+      subscription: updatedSubscription,
+      message: "Subscription reactivated successfully",
+    };
+  }
+
+  return {
+    success: true,
+    message: "Subscription status updated",
+  };
 }

@@ -8,7 +8,6 @@ import {
   updateSubscription,
   createInvoice,
   updateInvoice,
-  createPayment,
 } from "~/actions/subscription";
 
 export async function POST(req: Request) {
@@ -433,88 +432,6 @@ export async function POST(req: Request) {
             console.log("❌ Invoice payment failed:", invoice.id);
           } else {
             console.log("⚠️ Invoice not found in database:", invoice.id);
-          }
-        }
-        break;
-      }
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object; // For payment intent events, we need to look up the invoice differently
-        if (paymentIntent.latest_charge) {
-          const charge = await stripe.charges.retrieve(
-            paymentIntent.latest_charge as string,
-          );
-
-          // Check if charge has invoice property
-          if (charge.invoice) {
-            // Find the related invoice in our database
-            const invoice = await db.invoice.findFirst({
-              where: { stripeInvoiceId: charge.invoice as string },
-              include: { user: { select: { email: true, name: true } } },
-            });
-
-            if (invoice) {
-              console.log(
-                `💳 Creating payment record for invoice: ${invoice.id}, amount: ${paymentIntent.amount / 100}`,
-              );
-
-              await createPayment(
-                invoice.userId,
-                invoice.id,
-                paymentIntent.id,
-                paymentIntent.amount, // Keep in cents for the function (it converts internally)
-                paymentIntent.currency,
-                "succeeded", // Use succeeded instead of paymentIntent.status
-                paymentIntent.payment_method_types[0] ?? "card",
-                paymentIntent.description ?? undefined,
-              );
-
-              console.log("✅ Payment created successfully:", paymentIntent.id);
-            } else {
-              console.log(
-                `⚠️ No invoice found for charge: ${(charge as any).invoice}`,
-              );
-            }
-          } else {
-            console.log(
-              `⚠️ No invoice found for payment intent: ${paymentIntent.id}`,
-            );
-          }
-        }
-        break;
-      }
-      case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object; // For payment intent events, we need to look up the invoice differently
-        if (paymentIntent.latest_charge) {
-          const chargeResponse = await stripe.charges.retrieve(
-            paymentIntent.latest_charge as string,
-          );
-          const charge = chargeResponse as Stripe.Charge;
-
-          if ((charge as any).invoice) {
-            // Find the related invoice in our database
-            const invoice = await db.invoice.findFirst({
-              where: { stripeInvoiceId: (charge as any).invoice as string },
-              include: { user: { select: { email: true, name: true } } },
-            });
-
-            if (invoice) {
-              console.log(
-                `💳❌ Creating failed payment record for invoice: ${invoice.id}`,
-              );
-
-              await createPayment(
-                invoice.userId,
-                invoice.id,
-                paymentIntent.id,
-                paymentIntent.amount, // Keep in cents
-                paymentIntent.currency,
-                "failed",
-                paymentIntent.payment_method_types[0] ?? "card",
-                paymentIntent.description ?? undefined,
-              );
-
-              console.log("❌ Failed payment recorded:", paymentIntent.id);
-            }
           }
         }
         break;

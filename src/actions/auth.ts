@@ -18,12 +18,24 @@ export async function signUp(data: SignUpFormValues) {
       return { error: "Email already in use" };
     }
 
-    // Check if username already exists
-    const existingUsernameUser = await db.user.findUnique({
-      where: { username: validatedData.username },
+    // Check if username already exists (case-insensitive)
+    const allUsers = await db.user.findMany({
+      where: {
+        username: {
+          not: null,
+        },
+      },
+      select: {
+        username: true,
+      },
     });
 
-    if (existingUsernameUser) {
+    const usernameExists = allUsers.some(
+      (user) =>
+        user.username?.toLowerCase() === validatedData.username.toLowerCase(),
+    );
+
+    if (usernameExists) {
       return { error: "Username already in use" };
     }
 
