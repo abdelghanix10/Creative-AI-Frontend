@@ -18,6 +18,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  // Check if user account is active for protected routes
+  if (session && isProtectedRoute) {
+    if (session.user.isActive === false) {
+      const signInUrl = new URL("/app/sign-in", request.url);
+      signInUrl.searchParams.set("error", "ACCOUNT_DEACTIVATED");
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+
   // Check admin access for admin routes
   if (session && isAdminRoute) {
     // Check user role from session (which is already populated from the database during auth)

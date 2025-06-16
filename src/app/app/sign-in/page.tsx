@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Sparkles } from "lucide-react";
 import { signIn, getSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
@@ -15,6 +15,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const {
     register,
@@ -37,10 +38,46 @@ export default function SignInPage() {
     setIsFormValid(!!emailOrUsername && !!password);
   }, [emailOrUsername, password]);
 
+  // Check for error parameter in URL
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "ACCOUNT_DEACTIVATED") {
+      setError(
+        "Your account is deactivated. Contact support at CreativeAI@support.com",
+      );
+    }
+  }, [searchParams]);
+
   const onSubmit = async (data: SignInFormValues) => {
     try {
       setIsLoading(true);
       setError(null); // Clear any existing error when attempting to sign in
+
+      // First, check if the account exists and is active
+      const accountCheckResponse = await fetch("/api/auth/check-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          emailOrUsername: data.emailOrUsername,
+        }),
+      });
+
+      if (accountCheckResponse.ok) {
+        const accountStatus = (await accountCheckResponse.json()) as {
+          exists: boolean;
+          isActive: boolean;
+        };
+
+        // If account exists but is not active, show deactivation message
+        if (accountStatus.exists && !accountStatus.isActive) {
+          setError(
+            "Your account is deactivated. Contact support at CreativeAI@support.com",
+          );
+          return;
+        }
+      }
 
       const signInResult = await signIn("credentials", {
         redirect: false,
@@ -81,7 +118,7 @@ export default function SignInPage() {
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold text-foreground">
-              Craetive AI
+              Creative AI
             </span>
           </div>
         </div>

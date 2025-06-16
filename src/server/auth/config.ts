@@ -19,6 +19,7 @@ declare module "next-auth" {
       username?: string;
       subscriptionTier?: string;
       role?: string;
+      isActive?: boolean;
       // ...other properties
       // role: UserRole;
     } & DefaultSession["user"];
@@ -29,6 +30,7 @@ declare module "next-auth" {
     username?: string | null;
     subscriptionTier?: string | null;
     role?: string | null;
+    isActive?: boolean | null;
   }
 }
 
@@ -37,6 +39,7 @@ declare module "@auth/core/jwt" {
     username?: string;
     subscriptionTier?: string;
     role?: string;
+    isActive?: boolean;
   }
 }
 
@@ -72,6 +75,7 @@ export const authConfig = {
               password: true,
               subscriptionTier: true,
               role: true,
+              isActive: true,
             },
           });
 
@@ -90,6 +94,7 @@ export const authConfig = {
                 password: true,
                 subscriptionTier: true,
                 role: true,
+                isActive: true,
               },
             });
           }
@@ -104,6 +109,12 @@ export const authConfig = {
             return null;
           }
 
+          // Check if the account is active after password verification
+          if (!user.isActive) {
+            // Return null and let the client handle the deactivated account
+            return null;
+          }
+
           return {
             id: user.id,
             name: user.name,
@@ -112,6 +123,7 @@ export const authConfig = {
             username: user.username,
             subscriptionTier: user.subscriptionTier,
             role: user.role,
+            isActive: user.isActive,
           } as User;
         } catch {
           return null;
@@ -143,6 +155,7 @@ export const authConfig = {
           username: token.username,
           subscriptionTier: token.subscriptionTier,
           role: token.role,
+          isActive: token.isActive,
         },
       };
     },
@@ -154,17 +167,26 @@ export const authConfig = {
         token.username = user.username ?? undefined;
         token.subscriptionTier = user.subscriptionTier ?? undefined;
         token.role = user.role ?? undefined;
+        token.isActive = user.isActive ?? undefined;
       }
 
-      // If we don't have username, subscriptionTier, or role in token but have user id, fetch them from database
+      // If we don't have username, subscriptionTier, role, or isActive in token but have user id, fetch them from database
       if (
         token.sub &&
-        (!token.username || !token.subscriptionTier || !token.role)
+        (!token.username ||
+          !token.subscriptionTier ||
+          !token.role ||
+          token.isActive === undefined)
       ) {
         try {
           const dbUser = await db.user.findUnique({
             where: { id: token.sub },
-            select: { username: true, subscriptionTier: true, role: true },
+            select: {
+              username: true,
+              subscriptionTier: true,
+              role: true,
+              isActive: true,
+            },
           });
           if (dbUser?.username) {
             token.username = dbUser.username;
@@ -174,6 +196,9 @@ export const authConfig = {
           }
           if (dbUser?.role) {
             token.role = dbUser.role;
+          }
+          if (dbUser?.isActive !== undefined) {
+            token.isActive = dbUser.isActive;
           }
         } catch (error) {
           console.error("Error fetching user data for token:", error);
@@ -187,12 +212,18 @@ export const authConfig = {
           try {
             const dbUser = await db.user.findUnique({
               where: { id: token.sub },
-              select: { username: true, subscriptionTier: true, role: true },
+              select: {
+                username: true,
+                subscriptionTier: true,
+                role: true,
+                isActive: true,
+              },
             });
             if (dbUser) {
               token.username = dbUser.username ?? undefined;
               token.subscriptionTier = dbUser.subscriptionTier ?? undefined;
               token.role = dbUser.role ?? undefined;
+              token.isActive = dbUser.isActive ?? undefined;
             }
           } catch (error) {
             console.error(

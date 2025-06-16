@@ -9,6 +9,7 @@ import {
   getSubscriptionPlans,
   getUserInvoices,
   cancelUserSubscription,
+  getLastCanceledSubscription,
 } from "~/actions/subscription";
 import { PageLayout } from "~/components/client/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -23,6 +24,7 @@ import {
   Crown,
   DollarSign,
   History,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -61,6 +63,17 @@ interface Invoice {
   createdAt: Date;
 }
 
+interface LastCanceledSubscription {
+  id: string;
+  status: string;
+  interval: "monthly" | "yearly";
+  plan: {
+    id: string;
+    name: string;
+    displayName?: string;
+  };
+}
+
 export default function BillingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,6 +84,8 @@ export default function BillingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [lastCanceledSubscription, setLastCanceledSubscription] =
+    useState<LastCanceledSubscription | null>(null);
   const [plansLoading, setPlansLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelType, setCancelType] = useState<"immediate" | "period-end">(
@@ -123,9 +138,7 @@ export default function BillingPage() {
         } catch (error) {
           console.error("Error fetching subscription plans:", error);
           setPlans([]);
-        }
-
-        // Fetch user invoices if logged in
+        } // Fetch user invoices if logged in
         if (session?.user?.id) {
           try {
             const userInvoices = await getUserInvoices(session.user.id);
@@ -133,6 +146,22 @@ export default function BillingPage() {
           } catch (error) {
             console.error("Error fetching user invoices:", error);
             setInvoices([]);
+          }
+
+          // Fetch last canceled subscription if user doesn't have active subscription
+          if (!subscription || subscription.status === "canceled") {
+            try {
+              const lastCanceled = await getLastCanceledSubscription(
+                session.user.id,
+              );
+              setLastCanceledSubscription(lastCanceled);
+            } catch (error) {
+              console.error(
+                "Error fetching last canceled subscription:",
+                error,
+              );
+              setLastCanceledSubscription(null);
+            }
           }
         }
 
@@ -161,7 +190,7 @@ export default function BillingPage() {
           setPlansLoading(false);
         });
     }
-  }, [session]);
+  }, [session, subscription]);
 
   const handleSubscribe = async (
     planId: string,
@@ -178,7 +207,6 @@ export default function BillingPage() {
       setLoading(null);
     }
   };
-
   // Handle subscription cancellation
   const handleCancelSubscription = async (immediately = false) => {
     try {
@@ -197,6 +225,56 @@ export default function BillingPage() {
         error instanceof Error
           ? error.message
           : "Failed to cancel subscription";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(null);
+    }
+  }; // Handle subscription reactivation
+  const handleReactivateSubscription = async () => {
+    // Use subscription if available, otherwise use lastCanceledSubscription
+    const targetSubscription = subscription ?? lastCanceledSubscription;
+
+    if (!targetSubscription?.id) {
+      toast.error("No subscription found to reactivate");
+      return;
+    }
+
+    try {
+      setLoading("reactivate");
+      const response = await fetch(
+        `/api/admin/subscriptions/${String(targetSubscription.id)}/reactivate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ); // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const data: {
+        subscription?: unknown;
+        message?: string;
+        error?: string;
+        action?: string;
+      } = await response.json();
+
+      if (!response.ok) {
+        // Check if we need to redirect to checkout
+        if (data.action === "redirect_to_checkout") {
+          toast.error(data.message ?? "Customer needs to complete checkout");
+          // You can add checkout redirection logic here if needed
+          return;
+        }
+        throw new Error(data.error ?? "Failed to reactivate subscription");
+      }
+
+      toast.success(data.message ?? "Subscription reactivated successfully!");
+      await Promise.all([refetchSubscription(), refetchCredits()]);
+    } catch (error) {
+      console.error("Error reactivating subscription:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to reactivate subscription";
       toast.error(errorMessage);
     } finally {
       setLoading(null);
@@ -438,57 +516,99 @@ export default function BillingPage() {
                 </p>
               </div>
             </div>{" "}
-            {currentTier !== "Free" && (
+            {(currentTier !== "Free" || lastCanceledSubscription) && (
               <div className="space-y-4">
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                   <h4 className="mb-2 font-medium text-foreground">
                     Manage Subscription
                   </h4>{" "}
-                  <p className="mb-4 text-sm text-foreground">
-                    You can cancel your subscription at any time. Choose to
-                    cancel immediately or at the end of your current billing
-                    period.
-                  </p>
-                  {canCancelImmediately() && (
-                    <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                      <p className="text-sm text-yellow-800">
-                        <strong>Note:</strong> You cannot cancel immediately
-                        because you have {credits} credits, which exceeds your
-                        plan limit of {subscription?.plan?.credits} credits.
-                        Please use your credits first or choose to cancel at the
-                        end of your billing period.
+                  {subscription?.status === "canceled" ||
+                  (!subscription && lastCanceledSubscription) ? (
+                    // Show reactivate button for canceled subscriptions or when no active sub but have last canceled
+                    <div>
+                      {" "}
+                      <p className="mb-4 text-sm text-foreground">
+                        {subscription?.status === "canceled"
+                          ? "Your subscription has been canceled. You can reactivate it to continue enjoying premium features."
+                          : lastCanceledSubscription?.plan?.displayName
+                            ? `You previously had a ${lastCanceledSubscription.plan.displayName} subscription. You can reactivate it to continue enjoying premium features.`
+                            : "You can reactivate your previous subscription to continue enjoying premium features."}
+                      </p>{" "}
+                      {lastCanceledSubscription?.plan && (
+                        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                          <p className="text-sm text-blue-800">
+                            <strong>Last Subscription:</strong>{" "}
+                            {lastCanceledSubscription.plan.displayName ??
+                              lastCanceledSubscription.plan.name}
+                            {lastCanceledSubscription.interval &&
+                              ` - ${lastCanceledSubscription.interval === "yearly" ? "Annual" : "Monthly"} billing`}
+                          </p>
+                        </div>
+                      )}
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleReactivateSubscription}
+                        disabled={loading === "reactivate"}
+                        className="flex items-center gap-2"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        {loading === "reactivate"
+                          ? "Reactivating..."
+                          : "Reactivate Subscription"}
+                      </Button>
+                    </div>
+                  ) : (
+                    // Show cancel buttons for active subscriptions
+                    <div>
+                      <p className="mb-4 text-sm text-foreground">
+                        You can cancel your subscription at any time. Choose to
+                        cancel immediately or at the end of your current billing
+                        period.
                       </p>
+                      {canCancelImmediately() && (
+                        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                          <p className="text-sm text-yellow-800">
+                            <strong>Note:</strong> You cannot cancel immediately
+                            because you have {credits} credits, which exceeds
+                            your plan limit of {subscription?.plan?.credits}{" "}
+                            credits. Please use your credits first or choose to
+                            cancel at the end of your billing period.
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openCancelDialog("period-end")}
+                          disabled={loading === "cancel-period-end"}
+                        >
+                          {loading === "cancel-period-end"
+                            ? "Canceling..."
+                            : "Cancel at Period End"}
+                        </Button>{" "}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openCancelDialog("immediate")}
+                          disabled={
+                            loading === "cancel-immediate" ||
+                            canCancelImmediately()
+                          }
+                          title={
+                            canCancelImmediately()
+                              ? "You have too many credits to cancel immediately"
+                              : ""
+                          }
+                        >
+                          {loading === "cancel-immediate"
+                            ? "Canceling..."
+                            : "Cancel Immediately"}
+                        </Button>
+                      </div>
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openCancelDialog("period-end")}
-                      disabled={loading === "cancel-period-end"}
-                    >
-                      {loading === "cancel-period-end"
-                        ? "Canceling..."
-                        : "Cancel at Period End"}
-                    </Button>{" "}
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => openCancelDialog("immediate")}
-                      disabled={
-                        loading === "cancel-immediate" || canCancelImmediately()
-                      }
-                      title={
-                        canCancelImmediately()
-                          ? "You have too many credits to cancel immediately"
-                          : ""
-                      }
-                    >
-                      {loading === "cancel-immediate"
-                        ? "Canceling..."
-                        : "Cancel Immediately"}
-                    </Button>
-                  </div>
                 </div>
               </div>
             )}

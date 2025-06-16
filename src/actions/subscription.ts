@@ -653,12 +653,6 @@ export async function cancelUserSubscription(immediately = false) {
 
       // Cancel immediately
       await stripe.subscriptions.cancel(subscription.stripeSubscriptionId!);
-
-      // Get the Free plan details from database
-      const freePlan = await db.subscriptionPlan.findUnique({
-        where: { name: "Free" },
-      });
-
       await db.subscription.update({
         where: { id: subscription.id },
         data: {
@@ -667,13 +661,13 @@ export async function cancelUserSubscription(immediately = false) {
         },
       });
 
-      // Revert user to free plan
+      // Revert user to free plan but keep existing credits
       await db.user.update({
         where: { id: session.user.id },
         data: {
           stripeSubscriptionId: null,
           subscriptionTier: "Free",
-          credits: freePlan?.credits ?? 100,
+          // Credits remain unchanged
         },
       });
 
@@ -746,4 +740,16 @@ async function processRefundForImmediateCancellation(
     console.error("Error processing refund:", error);
     throw error;
   }
+}
+
+// Get last canceled subscription for a user
+export async function getLastCanceledSubscription(userId: string) {
+  return await db.subscription.findFirst({
+    where: {
+      userId,
+      status: "canceled",
+    },
+    include: { plan: true },
+    orderBy: { updatedAt: "desc" },
+  });
 }

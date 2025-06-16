@@ -15,11 +15,10 @@ export async function POST(
     // Check admin access
     await requireAdmin();
 
-    const { subscriptionId } = await params;
-
-    // Get the subscription from database
+    const { subscriptionId } = await params; // Get the subscription from database with user info
     const subscription = await db.subscription.findUnique({
       where: { id: subscriptionId },
+      include: { user: true },
     });
 
     if (!subscription) {
@@ -27,7 +26,9 @@ export async function POST(
         { error: "Subscription not found" },
         { status: 404 },
       );
-    } // Cancel the subscription in Stripe
+    }
+
+    // Cancel the subscription in Stripe
     if (subscription.stripeSubscriptionId) {
       try {
         await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
@@ -36,21 +37,22 @@ export async function POST(
         // Continue with database update even if Stripe fails
         // This handles cases where Stripe subscription no longer exists
       }
-    } // Update the subscription in database and reset user to free tier
+    }
+
+    // Update the subscription in database and reset user to free tier
     const updatedSubscription = await db.subscription.update({
       where: { id: subscriptionId },
       data: {
         status: "cancelled",
         cancelAtPeriodEnd: false,
       },
-    });
-
-    // Update user to free tier and remove Stripe customer ID
+    }); // Update user to free tier but keep existing credits
     await db.user.update({
       where: { id: subscription.userId },
       data: {
         subscriptionTier: "Free",
-        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        // Credits remain unchanged
       },
     });
 

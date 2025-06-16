@@ -274,45 +274,69 @@ export async function POST(req: Request) {
 
         // First try to get userId from metadata, then fall back to database lookup
         let userId = subscription.metadata?.userId;
+        let user = null;
 
         if (!userId) {
           console.log(
             "User ID missing from subscription metadata, looking up by subscription ID",
           );
           // Look up user by stripeSubscriptionId
-          const user = await db.user.findFirst({
+          user = await db.user.findFirst({
             where: { stripeSubscriptionId: subscription.id },
             select: { id: true, email: true, name: true },
           });
 
-          if (!user) {
-            console.error("User not found for subscription:", subscription.id);
-            return new NextResponse("User not found for subscription", {
-              status: 400,
-            });
+          if (user) {
+            userId = user.id;
+            console.log(
+              `Found user ${userId} for subscription ${subscription.id}`,
+            );
           }
-
-          userId = user.id;
-          console.log(
-            `Found user ${userId} for subscription ${subscription.id}`,
-          );
         }
 
-        // Get the Free plan details from database
-        const freePlan = await db.subscriptionPlan.findUnique({
-          where: { name: "Free" },
-        });
+        // If we still don't have a user, try to find via subscription table
+        if (!userId) {
+          console.log(
+            "Looking up user via subscription table for subscription:",
+            subscription.id,
+          );
+          const dbSubscription = await db.subscription.findFirst({
+            where: { stripeSubscriptionId: subscription.id },
+            include: {
+              user: { select: { id: true, email: true, name: true } },
+            },
+          });
 
-        // Update subscription record
+          if (dbSubscription?.user) {
+            userId = dbSubscription.user.id;
+            user = dbSubscription.user;
+            console.log(
+              `Found user ${userId} via subscription table for subscription ${subscription.id}`,
+            );
+          }
+        }
+
+        if (!userId) {
+          console.error(
+            "User not found for subscription deletion:",
+            subscription.id,
+          );
+          // Don't return an error - just log and continue
+          // This prevents webhook failures for already cleaned up subscriptions
+          console.log("Skipping subscription deletion - user not found");
+          break;
+        } // Update subscription record
         await updateSubscription(subscription.id, {
           status: "canceled",
-        }); // Revert user to free plan
+        });
+
+        // Revert user to free plan but keep existing credits
         await db.user.update({
           where: { id: userId },
           data: {
             stripeSubscriptionId: null,
             subscriptionTier: "Free",
-            credits: freePlan?.credits ?? 100,
+            // Credits remain unchanged
           },
         });
 
@@ -552,6 +576,15 @@ export async function POST(req: Request) {
           `💰 Payment intent created: ${paymentIntent.id}, amount: ${paymentIntent.amount / 100}`,
         );
         // This is just the start of the payment process, no action needed
+        break;
+      }
+
+      case "payment_intent.canceled": {
+        const paymentIntent = event.data.object;
+        console.log(
+          `💰❌ Payment intent canceled: ${paymentIntent.id}, amount: ${paymentIntent.amount / 100}`,
+        );
+        // This is informational - payment was canceled, no action needed in most cases
         break;
       }
 
