@@ -196,17 +196,20 @@ export const authConfig = {
               isActive: true,
             },
           });
-          if (dbUser?.username) {
-            token.username = dbUser.username;
-          }
-          if (dbUser?.subscriptionTier) {
-            token.subscriptionTier = dbUser.subscriptionTier;
-          }
-          if (dbUser?.role) {
-            token.role = dbUser.role;
-          }
-          if (dbUser?.isActive !== undefined) {
-            token.isActive = dbUser.isActive;
+          if (dbUser) {
+            if (dbUser.username) {
+              token.username = dbUser.username;
+            }
+            if (dbUser.subscriptionTier) {
+              token.subscriptionTier = dbUser.subscriptionTier;
+            }
+            if (dbUser.role) {
+              token.role = dbUser.role;
+            }
+            // Explicitly check for boolean value
+            if (dbUser.isActive !== null && dbUser.isActive !== undefined) {
+              token.isActive = dbUser.isActive;
+            }
           }
         } catch (error) {
           console.error("Error fetching user data for token:", error);

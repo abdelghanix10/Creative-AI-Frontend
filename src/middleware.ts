@@ -20,7 +20,8 @@ export async function middleware(request: NextRequest) {
 
   // Check if user account is active for protected routes
   if (session && isProtectedRoute) {
-    if (session.user.isActive === false) {
+    // Check if the user object exists and isActive is explicitly false
+    if (session.user && session.user.isActive === false) {
       const signInUrl = new URL("/app/sign-in", request.url);
       signInUrl.searchParams.set("error", "ACCOUNT_DEACTIVATED");
       return NextResponse.redirect(signInUrl);
