@@ -124,6 +124,14 @@ export function TextToSpeechEditor({
 
     if (textContent.trim().length === 0 || !selectedVoice) return;
 
+    // Check if user has enough credits before proceeding
+    if (credits < 15) {
+      toast.error(
+        "Not enough credits! You need at least 15 credits to generate speech.",
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       const { audioId, shouldShowThrottleAlert } = await generateTextToSpeech(
@@ -140,6 +148,19 @@ export function TextToSpeechEditor({
       setCurrentAudioId(audioId);
     } catch (error) {
       console.error("Error generating speech: ", error);
+
+      // Check if the error is about insufficient credits
+      if (
+        error instanceof Error &&
+        error.message.includes("Not enough credits")
+      ) {
+        toast.error(
+          "Not enough credits! You need at least 15 credits to generate speech.",
+        );
+      } else {
+        toast.error("Failed to generate speech. Please try again.");
+      }
+
       setLoading(false);
     }
   };

@@ -36,6 +36,14 @@ export function SoundEffectsGenerator({ credits }: { credits: number }) {
   const handleGenerateSoundEffect = async () => {
     if (isTextEmpty) return;
 
+    // Check if user has enough credits before proceeding
+    if (credits < 15) {
+      toast.error(
+        "Not enough credits! You need at least 15 credits to generate sound effects.",
+      );
+      return;
+    }
+
     try {
       setLoading(true);
       const { audioId, shouldShowThrottleAlert } =
@@ -48,6 +56,19 @@ export function SoundEffectsGenerator({ credits }: { credits: number }) {
       setCurrentAudioId(audioId);
     } catch (error) {
       console.error("Error generating sound effect: ", error);
+
+      // Check if the error is about insufficient credits
+      if (
+        error instanceof Error &&
+        error.message.includes("Not enough credits")
+      ) {
+        toast.error(
+          "Not enough credits! You need at least 15 credits to generate sound effects.",
+        );
+      } else {
+        toast.error("Failed to generate sound effect. Please try again.");
+      }
+
       setLoading(false);
     }
   };

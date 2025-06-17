@@ -50,6 +50,14 @@ export function VoiceChanger({
 
     if (!file || !selectedVoice) return;
 
+    // Check if user has enough credits before proceeding
+    if (credits < 15) {
+      toast.error(
+        "Not enough credits! You need at least 15 credits to convert voice.",
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -80,6 +88,19 @@ export function VoiceChanger({
       setCurrentAudioId(audioId);
     } catch (error) {
       console.error("Error generating speech: ", error);
+
+      // Check if the error is about insufficient credits
+      if (
+        error instanceof Error &&
+        error.message.includes("Not enough credits")
+      ) {
+        toast.error(
+          "Not enough credits! You need at least 15 credits to convert voice.",
+        );
+      } else {
+        toast.error("Failed to convert voice. Please try again.");
+      }
+
       setIsLoading(false);
     }
   };
