@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import { ServiceType } from "~/types/services";
+
+// Define voice-related services
+export type VoiceServiceType = "styletts2" | "seedvc" | "make-an-audio";
+export type AllVoiceServiceType = VoiceServiceType | "system";
 
 // Auto-generate gradient colors based on voice count
 const generateGradientColor = (index: number): string => {
@@ -13,7 +16,7 @@ const generateGradientColor = (index: number): string => {
     ["#f59e0b", "#ef4444", "#ffffff", "#22c55e"], // Orange to Red to White to Green
     ["#06b6d4", "#3b82f6", "#ffffff", "#a855f7"], // Cyan to Blue to White to Purple
   ];
-  
+
   const colors = colorSets[index % colorSets.length]!;
   return `linear-gradient(45deg, ${colors.join(", ")})`;
 };
@@ -22,92 +25,201 @@ export interface Voice {
   id: string;
   name: string;
   gradientColors: string;
-  service: ServiceType;
+  service: AllVoiceServiceType;
+  previewUrl?: string; // Optional S3 URL for voice preview
 }
 
-// API function to fetch voices from StyleTTS2 (Text-to-Speech)
-const fetchStyleTTS2Voices = async (): Promise<string[]> => {
+// API function to fetch user voices from database for StyleTTS2 service
+const fetchStyleTTS2Voices = async (): Promise<{
+  voices: string[];
+  previews: { id: string; previewUrl: string | null }[];
+  details: {
+    id: string;
+    name: string;
+    service: string;
+    previewUrl: string | null;
+  }[];
+}> => {
   try {
-    const response = await fetch(`/api/voices/styletts2`, { // Updated to internal API route
+    const response = await fetch(`/api/voices/styletts2`, {
       method: "GET",
-      // Headers like Authorization are handled by the server-side API route
     });
-    
+
     if (!response.ok) {
-      throw new Error(`Failed to fetch StyleTTS2 voices: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch StyleTTS2 voices: ${response.statusText}`,
+      );
     }
-    
-    const data = await response.json();
-    return data.voices || [];
+
+    const data = (await response.json()) as {
+      voices?: string[];
+      voicePreviews?: { id: string; previewUrl: string | null }[];
+      voicesWithDetails?: {
+        id: string;
+        name: string;
+        service: string;
+        previewUrl: string | null;
+      }[];
+    };
+    return {
+      voices: data.voices ?? [],
+      previews: data.voicePreviews ?? [],
+      details: data.voicesWithDetails ?? [],
+    };
   } catch (error) {
     console.error("Error fetching StyleTTS2 voices:", error);
-    // Fallback to default StyleTTS2 voices if API fails
-    return ["default-styletts2-voice1", "default-styletts2-voice2"]; // Example fallback
+    // Return empty array if API fails since we're fetching from database
+    return {
+      voices: [],
+      previews: [],
+      details: [],
+    };
   }
 };
 
-// API function to fetch voices from SeedVC (Speech-to-Speech)
-const fetchSeedVCVoices = async (): Promise<string[]> => {
+// API function to fetch user voices from database for SeedVC service
+const fetchSeedVCVoices = async (): Promise<{
+  voices: string[];
+  previews: { id: string; previewUrl: string | null }[];
+  details: {
+    id: string;
+    name: string;
+    service: string;
+    previewUrl: string | null;
+  }[];
+}> => {
   try {
-    const response = await fetch(`/api/voices/seedvc`, { // Updated to internal API route
+    const response = await fetch(`/api/voices/seedvc`, {
       method: "GET",
-      // Headers like Authorization are handled by the server-side API route
     });
-    
-    console.log('rsep' + response);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch SeedVC voices: ${response.statusText}`);
     }
-    
-    const data = await response.json();
-    return data.voices || [];
+
+    const data = (await response.json()) as {
+      voices?: string[];
+      voicePreviews?: { id: string; previewUrl: string | null }[];
+      voicesWithDetails?: {
+        id: string;
+        name: string;
+        service: string;
+        previewUrl: string | null;
+      }[];
+    };
+    return {
+      voices: data.voices ?? [],
+      previews: data.voicePreviews ?? [],
+      details: data.voicesWithDetails ?? [],
+    };
   } catch (error) {
     console.error("Error fetching SeedVC voices:", error);
-    // Fallback to default SeedVC voices if API fails
-    return ["default-seedvc-voice1", "default-seedvc-voice2"]; // Example fallback
+    // Return empty array if API fails since we're fetching from database
+    return {
+      voices: [],
+      previews: [],
+      details: [],
+    };
   }
 };
 
-// Generate voices dynamically from both APIs
+// API function to fetch user voices from database for Make-An-Audio service
+const fetchMakeAnAudioVoices = async (): Promise<{
+  voices: string[];
+  previews: { id: string; previewUrl: string | null }[];
+  details: {
+    id: string;
+    name: string;
+    service: string;
+    previewUrl: string | null;
+  }[];
+}> => {
+  try {
+    const response = await fetch(`/api/voices/make-an-audio`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch Make-An-Audio voices: ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      voices?: string[];
+      voicePreviews?: { id: string; previewUrl: string | null }[];
+      voicesWithDetails?: {
+        id: string;
+        name: string;
+        service: string;
+        previewUrl: string | null;
+      }[];
+    };
+    return {
+      voices: data.voices ?? [],
+      previews: data.voicePreviews ?? [],
+      details: data.voicesWithDetails ?? [],
+    };
+  } catch (error) {
+    console.error("Error fetching Make-An-Audio voices:", error);
+    // Return empty array if API fails since we're fetching from database
+    return {
+      voices: [],
+      previews: [],
+      details: [],
+    };
+  }
+};
+
+// Generate voices dynamically from database APIs
 const generateVoicesFromAPI = async (): Promise<Voice[]> => {
-  const styletts2VoiceIds = await fetchStyleTTS2Voices();
-  const seedvcVoiceIds = await fetchSeedVCVoices();
+  const styletts2Data = await fetchStyleTTS2Voices();
+  const seedvcData = await fetchSeedVCVoices();
+  const makeAnAudioData = await fetchMakeAnAudioVoices();
   const voices: Voice[] = [];
+  const voiceIds = new Set<string>(); // Track unique voice IDs to prevent duplicates
   let gradientIndex = 0;
 
-  // Add StyleTTS2 voices
-  styletts2VoiceIds.forEach((voiceId) => {
-    voices.push({
-      id: voiceId,
-      name: voiceId.charAt(0).toUpperCase() + voiceId.slice(1), // Capitalize first letter
-      gradientColors: generateGradientColor(gradientIndex++),
-      service: "styletts2",
-    });
+  // Add StyleTTS2 voices using detailed information
+  styletts2Data.details.forEach((voiceDetail) => {
+    if (!voiceIds.has(voiceDetail.id)) {
+      voiceIds.add(voiceDetail.id);
+      voices.push({
+        id: voiceDetail.id,
+        name: voiceDetail.name,
+        gradientColors: generateGradientColor(gradientIndex++),
+        service: voiceDetail.service === "system" ? "system" : "styletts2",
+        previewUrl: voiceDetail.previewUrl ?? undefined,
+      });
+    }
   });
-  
-  // Add SeedVC voices
-  seedvcVoiceIds.forEach((voiceId) => {
-    voices.push({
-      id: voiceId,
-      name: voiceId.charAt(0).toUpperCase() + voiceId.slice(1),
-      gradientColors: generateGradientColor(gradientIndex++),
-      service: "seedvc",
-    });
+
+  // Add SeedVC voices using detailed information
+  seedvcData.details.forEach((voiceDetail) => {
+    if (!voiceIds.has(voiceDetail.id)) {
+      voiceIds.add(voiceDetail.id);
+      voices.push({
+        id: voiceDetail.id,
+        name: voiceDetail.name,
+        gradientColors: generateGradientColor(gradientIndex++),
+        service: voiceDetail.service === "system" ? "system" : "seedvc",
+        previewUrl: voiceDetail.previewUrl ?? undefined,
+      });
+    }
   });
-  
-  // Add Make-An-Audio voices (if any, or keep as placeholder)
-  // For now, let's assume Make-An-Audio doesn't fetch from an API in the same way
-  // or you might have a different way to populate these.
-  // If they also come from an API, we can add another fetch function.
-  const makeAnAudioVoices = [{ id: "maa-default", name: "Default MAA", service: "make-an-audio" as ServiceType }]; 
-  makeAnAudioVoices.forEach((voiceInfo) => {
-    voices.push({
-      id: voiceInfo.id,
-      name: voiceInfo.name,
-      gradientColors: generateGradientColor(gradientIndex++),
-      service: voiceInfo.service,
-    });
+
+  // Add Make-An-Audio voices using detailed information
+  makeAnAudioData.details.forEach((voiceDetail) => {
+    if (!voiceIds.has(voiceDetail.id)) {
+      voiceIds.add(voiceDetail.id);
+      voices.push({
+        id: voiceDetail.id,
+        name: voiceDetail.name,
+        gradientColors: generateGradientColor(gradientIndex++),
+        service: voiceDetail.service === "system" ? "system" : "make-an-audio",
+        previewUrl: voiceDetail.previewUrl ?? undefined,
+      });
+    }
   });
 
   return voices;
@@ -115,13 +227,13 @@ const generateVoicesFromAPI = async (): Promise<Voice[]> => {
 
 interface VoiceState {
   voices: Voice[];
-  selectedVoices: Record<ServiceType, Voice | null>;
+  selectedVoices: Record<VoiceServiceType, Voice | null>;
   isLoading: boolean;
   error: string | null;
   loadVoices: () => Promise<void>;
-  getVoices: (service: ServiceType) => Voice[];
-  getSelectedVoice: (service: ServiceType) => Voice | null;
-  selectVoice: (service: ServiceType, voice: string) => void;
+  getVoices: (service: VoiceServiceType) => Voice[];
+  getSelectedVoice: (service: VoiceServiceType) => Voice | null;
+  selectVoice: (service: VoiceServiceType, voice: string) => void;
 }
 
 export const useVoiceStore = create<VoiceState>((set, get) => ({
@@ -133,23 +245,25 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   },
   isLoading: false,
   error: null,
-  
+
   loadVoices: async () => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const voices = await generateVoicesFromAPI();
-      const defaultStyleTTS2Voice = voices.find((v) => v.service === "styletts2") ?? null;
-      const defaultSeedVCVoice = voices.find((v) => v.service === "seedvc") ?? null;
-      // Assuming make-an-audio might not have a default selectable voice in the same way, or it's handled differently
-      const defaultMakeAnAudioVoice = voices.find((v) => v.service === "make-an-audio") ?? null;
+      const defaultStyleTTS2Voice =
+        voices.find((v) => v.service === "styletts2") ?? null;
+      const defaultSeedVCVoice =
+        voices.find((v) => v.service === "seedvc") ?? null;
+      const defaultMakeAnAudioVoice =
+        voices.find((v) => v.service === "make-an-audio") ?? null;
 
       set({
         voices,
         selectedVoices: {
           styletts2: defaultStyleTTS2Voice,
           seedvc: defaultSeedVCVoice,
-          "make-an-audio": defaultMakeAnAudioVoice, // Or keep null if not applicable
+          "make-an-audio": defaultMakeAnAudioVoice,
         },
         isLoading: false,
       });
@@ -161,22 +275,24 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       });
     }
   },
-  
+
   getVoices: (service) => {
-    return get().voices.filter((voice) => voice.service === service);
+    return get().voices.filter(
+      (voice) => voice.service === "styletts2" || voice.service === "seedvc" || voice.service === "system",
+    );
   },
-  
+
   getSelectedVoice: (service) => {
     return get().selectedVoices[service];
   },
-  
+
   selectVoice: (service, voiceId) => {
     const serviceVoices = get().voices.filter(
-      (voice) => voice.service === service,
+      (voice) => voice.service === service || voice.service === "system",
     );
 
     const selectedVoice =
-      serviceVoices.find((voice) => voice.id === voiceId) || serviceVoices[0];
+      serviceVoices.find((voice) => voice.id === voiceId) ?? serviceVoices[0];
 
     set((state) => ({
       selectedVoices: {

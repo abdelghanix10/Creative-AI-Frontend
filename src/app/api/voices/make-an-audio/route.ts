@@ -9,15 +9,13 @@ export async function GET() {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Fetch user voices from database for seedvc service
+    } // Fetch user voices from database for make-an-audio service
     const userVoices = await db.userVoice.findMany({
       where: {
         OR: [
           {
             userId: session.user.id,
-            service: { in: ["seedvc", "styletts2"] },
+            service: "make-an-audio",
           },
           {
             service: "system",
@@ -71,9 +69,9 @@ export async function GET() {
       voicesWithDetails: voicesWithPreviews, // Add this for better data structure
     });
   } catch (error) {
-    console.error("Error in SeedVC voices API route:", error);
+    console.error("Error in Make-An-Audio voices API route:", error);
     return NextResponse.json(
-      { error: "Internal server error fetching SeedVC voices" },
+      { error: "Internal server error fetching Make-An-Audio voices" },
       { status: 500 },
     );
   }
