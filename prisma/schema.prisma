@@ -141,6 +141,7 @@ model UserVoice {
   id        String   @id @default(cuid())
   userId    String
   service   String   // e.g., "styletts2", "seedvc"
+  voiceType String   @default("user") // e.g., "user", "system"
   voiceKey  String   // The key/ID of the voice in the external service
   s3Key     String?  // S3 key where the voice file is stored
   name      String   // Custom name for the voice

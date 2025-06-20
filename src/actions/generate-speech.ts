@@ -13,6 +13,10 @@ export async function generateTextToSpeech(text: string, voice: string) {
     throw new Error("User not authenticated");
   }
 
+  if (!voice || voice.trim() === "") {
+    throw new Error("Voice ID is required");
+  }
+
   const audioClipJob = await db.generatedAudioClip.create({
     data: {
       text: text,
@@ -140,12 +144,12 @@ export async function generationStatus(
   });
 
   if (audioClip.failed) {
-    revalidateBasedOnService(audioClip.service as ServiceType);
+    void revalidateBasedOnService(audioClip.service as ServiceType);
     return { success: false, audioUrl: null };
   }
 
   if (audioClip.s3Key) {
-    revalidateBasedOnService(audioClip.service as ServiceType);
+    void revalidateBasedOnService(audioClip.service as ServiceType);
     return {
       success: true,
       audioUrl: await getPresignedUrl({ key: audioClip.s3Key }),

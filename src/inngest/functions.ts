@@ -240,14 +240,28 @@ export const styleTTS2VoiceUploadFunction = inngest.createFunction(
           data: {
             userId: userId,
             service: "styletts2",
+            voiceType: "user",
             voiceKey: result.voice_key,
             s3Key: result.s3_key,
-            name: voiceName || result.voice_key,
+            name: voiceName ?? result.voice_key,
           },
         });
         console.log(
           `Voice ${result.voice_key} uploaded for user ${userId}. S3 Key: ${result.s3_key}`,
         );
+      });
+
+      // Send completion event that frontend can listen to
+      await step.run("send-completion-event", async () => {
+        await inngest.send({
+          name: "styletts2.voice.upload.completed",
+          data: {
+            userId: userId,
+            voiceKey: result.voice_key,
+            voiceName: voiceName ?? result.voice_key,
+            service: "styletts2",
+          },
+        });
       });
     }
 
@@ -308,7 +322,7 @@ export const seedVCVoiceUploadFunction = inngest.createFunction(
 
       if (!response.ok) {
         const errorBody = await response.text();
-        console.error(`StyleTTS2 API Error (${response.status}): ${errorBody}`);
+        console.error(`SeedVC API Error (${response.status}): ${errorBody}`);
 
         // Check if the error is due to duplicate voice name
         if (response.status === 400 && errorBody.includes("already exists")) {
@@ -362,14 +376,28 @@ export const seedVCVoiceUploadFunction = inngest.createFunction(
           data: {
             userId: userId,
             service: "seedvc",
+            voiceType: "user",
             voiceKey: result.voice_key,
             s3Key: result.s3_key,
-            name: voiceName || result.voice_key,
+            name: voiceName ?? result.voice_key,
           },
         });
         console.log(
           `SeedVC Voice ${result.voice_key} uploaded for user ${userId}. S3 Key: ${result.s3_key}`,
         );
+      });
+
+      // Send completion event that frontend can listen to
+      await step.run("send-completion-event", async () => {
+        await inngest.send({
+          name: "seedvc.voice.upload.completed",
+          data: {
+            userId: userId,
+            voiceKey: result.voice_key,
+            voiceName: voiceName ?? result.voice_key,
+            service: "seedvc",
+          },
+        });
       });
     }
 

@@ -6,21 +6,13 @@ import {
   IoPlay,
   IoStop,
 } from "react-icons/io5";
-import { useVoiceStore, type VoiceServiceType } from "~/stores/voice-store";
+import { useVoiceStore } from "~/stores/voice-store";
 import toast from "react-hot-toast";
-import type { ServiceType } from "~/types/services";
 import { useSession } from "next-auth/react";
 
-// Type guard to check if a service is voice-related
-function isVoiceService(service: ServiceType): service is VoiceServiceType {
-  return (
-    service === "styletts2" ||
-    service === "seedvc" ||
-    service === "make-an-audio"
-  );
-}
+type VoiceServiceType = "styletts2" | "seedvc" | "make-an-audio";
 
-export function VoiceSelector({ service }: { service: ServiceType }) {
+export function VoiceSelector({ service }: { service: VoiceServiceType }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
@@ -29,6 +21,16 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
   const getSelectedVoice = useVoiceStore((state) => state.getSelectedVoice);
   const selectVoice = useVoiceStore((state) => state.selectVoice);
   const loadVoices = useVoiceStore((state) => state.loadVoices);
+
+  const voices = getVoices(service);
+  const selectedVoice = getSelectedVoice(service);
+
+  // Add voice loading initialization
+  useEffect(() => {
+    void loadVoices().catch((error) => {
+      console.error("Failed to load voices:", error);
+    });
+  }, [loadVoices]);
 
   // State for file upload
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -66,15 +68,7 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
     };
   }, [isOpen]);
 
-  // Early return if service is not voice-related
-  if (!isVoiceService(service)) {
-    return null;
-  }
-
-  const voices = getVoices(service);
-  const selectedVoice = getSelectedVoice(service);
-
-  // Voice preview functionality - now uses S3 URLs instead of generating speech
+  // Voice preview functionality - uses S3 URLs directly from voice data
   const handlePlayVoice = async (voiceId: string) => {
     if (playingVoiceId === voiceId) {
       // Stop playing
@@ -96,16 +90,19 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
       }
     }
 
-    // Find the voice to get its preview URL
-    const voice = voices.find((v) => v.id === voiceId);
-    if (!voice?.previewUrl) {
-      console.warn("No preview URL available for voice:", voiceId);
-      toast.error("Voice preview is not available for this voice.");
-      return;
-    }
-
     try {
       setPlayingVoiceId(voiceId);
+
+      // Find the voice in the current service's voices
+      const voice = voices.find((v) => v.id === voiceId);
+
+      if (!voice) {
+        throw new Error("Voice not found");
+      }
+
+      if (!voice.previewUrl) {
+        throw new Error("No preview URL available for this voice");
+      }
 
       // Create or get audio element
       if (!audioRefs.current[voiceId]) {
@@ -148,13 +145,6 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
         setSelectedFile(null);
         return;
       }
-
-      // Note: Validating audio duration (max 30s) client-side requires reading the audio file.
-      // This can be done using the Web Audio API (AudioContext.decodeAudioData).
-      // For brevity, this example omits direct duration validation here, assuming server-side validation.
-      // You might want to add it for better UX.
-      // Example: const audio = new Audio(URL.createObjectURL(file)); audio.onloadedmetadata = () => { if (audio.duration > 30) setUploadError("Audio duration must be 30s or less.")}
-
       setSelectedFile(file);
     } else {
       setSelectedFile(null);
@@ -206,51 +196,75 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
         throw new Error(errorMessage);
       }
 
-      const result: unknown = await response.json();
+      await response.json();
 
-      // Reset form state first
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      // Start polling for voice list updates
+      let pollAttempts = 0;
+      const maxPollAttempts = 30; // Poll for up to 5 minutes (30 * 10s = 300s)
 
-      // Show success toast
-      toast.success(
-        "Your voice has been uploaded and is being processed in the background.",
-        {
-          duration: 5000,
-        },
-      );
+      const pollForVoiceUpdate = async () => {
+        try {
+          const voicesBeforeUpdate = getVoices(service).length;
+          await loadVoices();
+          const voicesAfterUpdate = getVoices(service).length;
 
-      console.log(
-        "Voice upload initiated. It will be processed in the background.",
-        result,
-      );
-
-      // Reload voices after a short delay to allow for backend processing
-      setTimeout(() => {
-        void (async () => {
-          try {
-            await loadVoices();
-            toast.success("Voice list has been updated.", {
-              duration: 3000,
-            });
-          } catch (error) {
-            console.error("Failed to reload voices after upload:", error);
-            toast.error(
-              "Could not refresh voice list. Please refresh manually.",
+          if (voicesAfterUpdate > voicesBeforeUpdate) {
+            // New voice detected
+            toast.success(
+              "Voice processing completed! Your new voice is now available.",
               {
                 duration: 5000,
               },
             );
+            // Reset form state first
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+
+            setIsUploading(false);
+            return; // Stop polling
           }
-        })();
-      }, 2000); // Wait 2 seconds before reloading
+
+          pollAttempts++;
+          if (pollAttempts < maxPollAttempts) {
+            // Continue polling every 10 seconds
+            setTimeout(() => {
+              void pollForVoiceUpdate();
+            }, 10000);
+          } else {
+            // Max attempts reached
+            toast(
+              "Voice processing is taking longer than expected. Please check back later.",
+              {
+                duration: 7000,
+                icon: "⚠️",
+              },
+            );
+          }
+        } catch (error) {
+          console.error("Failed to check for voice updates:", error);
+          setUploadError(
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred.",
+          );
+          pollAttempts++;
+          if (pollAttempts < maxPollAttempts) {
+            setTimeout(() => {
+              void pollForVoiceUpdate();
+            }, 10000);
+          }
+        }
+      };
+
+      // Start first poll after 10 seconds (give backend time to start processing)
+      setTimeout(() => {
+        void pollForVoiceUpdate();
+      }, 10000);
     } catch (error) {
       console.error("Upload error:", error);
       setUploadError(
         error instanceof Error ? error.message : "An unknown error occurred.",
       );
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -280,12 +294,13 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
         {isOpen && (
           <div className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-background shadow-lg">
             {/* Group voices by service type */}
+            {/* Group voices by service type */}
             {(() => {
               const systemVoices = voices.filter(
-                (voice) => voice.service === "system",
+                (voice) => voice.voiceType === "system",
               );
               const userVoices = voices.filter(
-                (voice) => voice.service !== "system",
+                (voice) => voice.voiceType !== "system",
               );
 
               return (
@@ -451,7 +466,7 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
               )}
             </button>
             <p className="mt-1 text-center text-xs text-muted-foreground">
-              Max 10MB, recommended
+              Max 2MB, recommended
               {service === "styletts2" ? "3-30s" : "3-10s"} audio.
             </p>
           </div>
@@ -476,10 +491,10 @@ export function VoiceSelector({ service }: { service: ServiceType }) {
 
 // Admin-only System Voice Upload Component
 function SystemVoiceUpload({
-  service: _service,
+  service,
   onUploadSuccess,
 }: {
-  service: ServiceType;
+  service: VoiceServiceType;
   onUploadSuccess: () => void;
 }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -518,11 +533,16 @@ function SystemVoiceUpload({
       .replace(/\.[^/.]+$/, "")
       .replace(/\./g, "_");
     formData.append("voice_name", baseName);
+    formData.append("service", service);
 
     try {
-      const response = await fetch("/api/admin/upload-system-voice", {
+      // Use a server-side API route that will handle the external API calls
+      const apiPath = `/api/admin/upload-system-voice`;
+
+      const response = await fetch(apiPath, {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -536,7 +556,10 @@ function SystemVoiceUpload({
         throw new Error(errorMessage);
       }
 
-      const result: unknown = await response.json();
+      const result = (await response.json()) as {
+        success: boolean;
+        message?: string;
+      };
 
       // Reset form state first
       setSelectedFile(null);

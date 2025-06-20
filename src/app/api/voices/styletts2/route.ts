@@ -17,10 +17,11 @@ export async function GET() {
         OR: [
           {
             userId: session.user.id,
-            service: { in: ["seedvc", "styletts2"] },
+            service: "styletts2",
           },
           {
-            service: "system",
+            voiceType: "system",
+            service: "styletts2",
           },
         ],
       },
@@ -30,6 +31,7 @@ export async function GET() {
         name: true,
         s3Key: true,
         service: true,
+        voiceType: true,
       },
     });
 
@@ -49,6 +51,7 @@ export async function GET() {
             id: voice.voiceKey,
             name: voice.name,
             service: voice.service,
+            voiceType: voice.voiceType,
             previewUrl: previewUrl,
           };
         } catch (error) {
@@ -60,15 +63,17 @@ export async function GET() {
             id: voice.voiceKey,
             name: voice.name,
             service: voice.service,
+            voiceType: voice.voiceType,
             previewUrl: null,
           };
         }
       }),
     );
+
     return NextResponse.json({
       voices: userVoices.map((voice) => voice.voiceKey),
       voicePreviews: voicesWithPreviews,
-      voicesWithDetails: voicesWithPreviews, // Add this for better data structure
+      voicesWithDetails: voicesWithPreviews,
     });
   } catch (error) {
     console.error("Error in StyleTTS2 voices API route:", error);

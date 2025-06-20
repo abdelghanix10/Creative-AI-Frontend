@@ -28,6 +28,7 @@ export async function GET() {
         name: true,
         s3Key: true,
         service: true,
+        voiceType: true,
       },
     });
 
@@ -47,6 +48,7 @@ export async function GET() {
             id: voice.voiceKey,
             name: voice.name,
             service: voice.service,
+            voiceType: voice.voiceType,
             previewUrl: previewUrl,
           };
         } catch (error) {
@@ -58,6 +60,7 @@ export async function GET() {
             id: voice.voiceKey,
             name: voice.name,
             service: voice.service,
+            voiceType: voice.voiceType,
             previewUrl: null,
           };
         }

@@ -11,7 +11,7 @@ import {
   IoMegaphoneOutline,
   IoMicOutline,
 } from "react-icons/io5";
-import { ServiceType } from "~/types/services";
+import type { ServiceType } from "~/types/services";
 import { GenerateButton } from "../generate-button";
 import {
   generateTextToSpeech,
@@ -122,7 +122,18 @@ export function TextToSpeechEditor({
   const handleGenerateSpeech = async () => {
     const selectedVoice = getSelectedVoice("styletts2");
 
-    if (textContent.trim().length === 0 || !selectedVoice) return;
+    console.log("Selected voice for generation:", selectedVoice);
+
+    if (textContent.trim().length === 0 || !selectedVoice?.id) {
+      if (!selectedVoice) {
+        console.error("No voice selected for StyleTTS2");
+        toast.error("Please select a voice before generating speech.");
+      } else if (!selectedVoice.id) {
+        console.error("Selected voice has no ID:", selectedVoice);
+        toast.error("Invalid voice selected. Please select a different voice.");
+      }
+      return;
+    }
 
     // Check if user has enough credits before proceeding
     if (credits < 15) {
@@ -136,7 +147,7 @@ export function TextToSpeechEditor({
       setLoading(true);
       const { audioId, shouldShowThrottleAlert } = await generateTextToSpeech(
         textContent,
-        selectedVoice?.id,
+        selectedVoice.id,
       );
 
       if (shouldShowThrottleAlert) {
