@@ -7,7 +7,6 @@ import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "~/components/guest/theme-provider";
 import { Providers } from "~/components/providers";
 import { auth } from "~/server/auth";
-import { initializeDatabase } from "~/lib/initialize-database";
 
 export const metadata: Metadata = {
   title: "CreativeAI",
@@ -25,9 +24,6 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
-
-  // Initialize database on app startup
-  await initializeDatabase();
 
   return (
     <html lang="en" suppressHydrationWarning>
