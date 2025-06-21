@@ -1,10 +1,10 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
 import { type DefaultSession, type NextAuthConfig, type User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { signInSchema } from "~/schemas/auth";
 
 import { db } from "~/server/db";
+import { verifyPassword } from "~/lib/password";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -111,7 +111,7 @@ export const authConfig = {
             return null;
           }
 
-          const passwordMatch = await bcrypt.compare(password, user.password);
+          const passwordMatch = await verifyPassword(password, user.password);
 
           if (!passwordMatch) {
             return null;

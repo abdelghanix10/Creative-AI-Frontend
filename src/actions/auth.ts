@@ -1,9 +1,9 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import type { SignUpFormValues } from "~/schemas/auth";
 import { signUpSchema } from "~/schemas/auth";
 import { db } from "~/server/db";
+import { hashPassword } from "~/lib/password";
 
 export async function signUp(data: SignUpFormValues) {
   try {
@@ -39,7 +39,7 @@ export async function signUp(data: SignUpFormValues) {
       return { error: "Username already in use" };
     }
 
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    const hashedPassword = await hashPassword(validatedData.password);
 
     await db.user.create({
       data: {

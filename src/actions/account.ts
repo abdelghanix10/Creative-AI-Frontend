@@ -1,10 +1,10 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
+import { verifyPassword, hashPassword } from "~/lib/password";
 import {
   updateNameSchema,
   updateEmailSchema,
@@ -90,10 +90,8 @@ export async function updateUserPassword(data: UpdatePasswordFormValues) {
 
     if (!user) {
       return { error: "User not found" };
-    }
-
-    // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(
+    } // Verify current password
+    const isCurrentPasswordValid = await verifyPassword(
       validatedData.currentPassword,
       user.password,
     );
@@ -103,7 +101,7 @@ export async function updateUserPassword(data: UpdatePasswordFormValues) {
     }
 
     // Hash new password
-    const hashedNewPassword = await bcrypt.hash(validatedData.newPassword, 10);
+    const hashedNewPassword = await hashPassword(validatedData.newPassword);
 
     await db.user.update({
       where: { id: session.user.id },
