@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { signUp } from "~/actions/auth";
 import type { SignUpFormValues } from "~/schemas/auth";
+import Image from "next/image";
 import { signUpSchema } from "~/schemas/auth";
 
 export default function SignUpPage() {
@@ -242,10 +243,12 @@ export default function SignUpPage() {
         <div className="hidden h-full rounded-3xl bg-gradient-to-b from-indigo-100 via-purple-100 to-[#5960d7] lg:block">
           <div className="flex h-full flex-col p-12">
             <div className="flex h-full items-center justify-center">
-              <img
+              <Image
                 className="w-full rounded-lg"
                 alt="Dashboard preview"
-                src="/placeholder.png"
+                src="/Dashboard.jpg"
+                width={800}
+                height={600}
               />
             </div>
 

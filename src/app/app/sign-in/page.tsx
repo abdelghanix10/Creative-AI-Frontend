@@ -239,7 +239,7 @@ export default function SignInPage() {
               <Image
                 className="w-full rounded-lg"
                 alt="Dashboard preview"
-                src="/placeholder.png"
+                src="/Dashboard.jpg"
                 width={800}
                 height={600}
               />

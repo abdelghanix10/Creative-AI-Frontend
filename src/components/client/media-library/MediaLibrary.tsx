@@ -217,11 +217,11 @@ export default function MediaLibrary({
         // Create audio info object for the store
         const audioInfo = {
           id,
-          title: text ?? "Generated Audio",
+          title: (text?.trim() ?? "") || "Generated Audio",
           voice,
           audioUrl: data.downloadUrl,
           service,
-          createdAt: createdAt.toUTCString(),
+          createdAt: new Date(createdAt).toUTCString(),
         };
 
         // Use the audio store to play
@@ -698,7 +698,7 @@ export default function MediaLibrary({
                               </span>
                             </div>
                             <p className="mb-2 line-clamp-2 text-sm font-medium">
-                              {item.text ?? "Generated Audio"}
+                              {(item.text?.trim() ?? "") || "Generated Audio"}
                             </p>
                             <div className="flex items-center justify-between">
                               <div className="text-xs text-muted-foreground">
@@ -766,7 +766,7 @@ export default function MediaLibrary({
                                 </Badge>
                               </div>
                               <p className="line-clamp-2 text-sm font-medium">
-                                {item.text ?? "Generated Audio"}
+                                {(item.text?.trim() ?? "") || "Generated Audio"}
                               </p>
                               <div className="text-xs text-muted-foreground">
                                 {item.service} {item.voice && `• ${item.voice}`}
@@ -848,7 +848,7 @@ export default function MediaLibrary({
                               </span>
                             </div>
                             <p className="mb-2 text-sm font-medium">
-                              {item.text ?? "Sound Effect"}
+                              {(item.text?.trim() ?? "") || "Sound Effect"}
                             </p>
                             <div className="flex items-center justify-between">
                               <div className="text-xs text-muted-foreground">
@@ -916,7 +916,7 @@ export default function MediaLibrary({
                                 </Badge>
                               </div>
                               <p className="line-clamp-2 text-sm font-medium">
-                                {item.text ?? "Sound Effect"}
+                                {(item.text?.trim() ?? "") ||"Sound Effect"}
                               </p>
                               <div className="text-xs text-muted-foreground">
                                 {item.service} {item.voice && `• ${item.voice}`}

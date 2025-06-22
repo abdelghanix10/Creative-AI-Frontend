@@ -210,16 +210,14 @@ export default function ExploreGallery({
         body: JSON.stringify({ s3Key }),
       });
       if (response.ok) {
-        const data = (await response.json()) as { downloadUrl: string };
-
-        // Create audio info object for the store
+        const data = (await response.json()) as { downloadUrl: string }; // Create audio info object for the store
         const audioInfo = {
           id,
-          title: text ?? "Sound Effect",
+          title: (text?.trim() ?? "") || "Sound Effect",
           voice: null,
           audioUrl: data.downloadUrl,
           service,
-          createdAt: createdAt.toUTCString(),
+          createdAt: new Date(createdAt).toUTCString(),
         };
 
         // Use the audio store to play
@@ -542,8 +540,7 @@ export default function ExploreGallery({
                                       "/placeholder-image.jpg"
                                     }
                                     alt={item.prompt}
-                                    width={400}
-                                    height={400}
+                                    fill
                                     className="!static object-cover transition-transform group-hover:scale-105"
                                   />
                                 )}
@@ -694,7 +691,7 @@ export default function ExploreGallery({
                             </div>
                             <div>
                               <p className="line-clamp-2 text-sm font-medium">
-                                {item.text ?? "Sound Effect"}
+                                {(item.text?.trim() ?? "") || "Sound Effect"}
                               </p>
                               <p className="text-sm text-gray-500">
                                 {item.service}
@@ -767,7 +764,7 @@ export default function ExploreGallery({
                                   </Badge>
                                 </div>
                                 <p className="line-clamp-2 text-sm font-medium">
-                                  {item.text ?? "Sound Effect"}
+                                  {(item.text?.trim() ?? "") || "Sound Effect"}
                                 </p>
                                 <div className="text-xs text-muted-foreground">
                                   {item.service}
@@ -884,7 +881,7 @@ export default function ExploreGallery({
                             </div>
                           </div>
                         ) : (
-                          <div>
+                          <div className="w-full">
                             <VideoCard
                               video={{
                                 id: item.id,

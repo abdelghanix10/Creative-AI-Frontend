@@ -421,7 +421,7 @@ export default function Home({ user }: HomeProps) {
               >
                 <div className="overflow-hidden rounded-xl bg-gradient-to-b from-background to-muted/20 shadow-2xl">
                   <Image
-                    src="https://cdn.dribbble.com/userupload/12302729/file/original-fa372845e394ee85bebe0389b9d86871.png?resize=1504x1128&vertical=center"
+                    src="/Dashboard.jpg"
                     width={1280}
                     height={720}
                     alt="SaaSify dashboard"
