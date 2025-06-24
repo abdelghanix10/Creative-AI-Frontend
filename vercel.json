@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/inngest",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
