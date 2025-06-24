@@ -2,6 +2,7 @@
 
 A modern AI-powered creative platform built with the T3 Stack that enables users to generate images, videos, speech, and sound effects using cutting-edge AI technologies.
 
+<<<<<<< HEAD
 ## 🎥 Video Preview
 
 <div align="center">
@@ -116,6 +117,9 @@ _Watch the full demo to see Creative AI Platform in action_
   <img src="public/ScreenShots/Api text to image .jpeg" alt="API Text to Image" width="45%" />
   <img src="public/ScreenShots/Api image to video.jpeg" alt="API Image to Video" width="45%" />
 </div>
+=======
+![Creative AI Dashboard](public/Dashboard.jpg)
+>>>>>>> 174e065a4408f851040849d45b4ba415ed0fddc5
 
 ## ✨ Features
 
