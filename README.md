@@ -5,10 +5,9 @@ A modern AI-powered creative platform built with the T3 Stack that enables users
 ## 🎥 Video Preview
 
 <div align="center">
-   <video width="80%" controls>
-      <source src="public/Video Preview/VideoPreview.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-   </video>
+   <a href="https://www.youtube.com/watch?v=nZtE_hA7aMU">
+      <img src="https://img.youtube.com/vi/nZtE_hA7aMU/maxresdefault.jpg" alt="Creative AI Platform Demo" width="80%">
+   </a>
 </div>
 
 _Watch the full demo to see Creative AI Platform in action_
