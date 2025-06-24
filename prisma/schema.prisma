@@ -1,0 +1,192 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "sqlite"
+    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+    // Further reading:
+    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+    url      = env("DATABASE_URL")
+}
+
+model Session {
+    id           String   @id @default(cuid())
+    sessionToken String   @unique
+    userId       String
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
+
+model User {
+    id            String    @id @default(cuid())
+    name          String?
+    username      String?   @unique
+    email         String?   @unique
+    password      String
+    emailVerified DateTime?
+    image         String?
+    credits       Int @default(100)
+    subscriptionTier String @default("Free") // Free, Lite, Pro
+    role          String    @default("USER") // USER, ADMIN
+    isActive      Boolean   @default(true) // User account status
+    stripeCustomerId String?
+    stripeSubscriptionId String?
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+    sessions      Session[]
+    generatedAudioClips GeneratedAudioClip[]
+    userVoices    UserVoice[]
+    generatedImages GeneratedImage[]
+    generatedVideos GeneratedVideo[]
+    subscriptions Subscription[]
+    invoices      Invoice[]
+}
+
+model SubscriptionPlan {
+    id           String   @id @default(cuid())
+    name         String   @unique // Free, Lite, Pro
+    displayName  String   // Display name for the plan
+    description  String?  // Plan description
+    credits      Int      // Monthly credits
+    price        Float    // Monthly price
+    yearlyPrice  Float?   // Yearly price (optional)
+    features     String   // JSON string of features
+    isActive     Boolean  @default(true)
+    stripePriceId String? // Stripe price ID for monthly
+    stripeYearlyPriceId String? // Stripe price ID for yearly
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+    subscriptions Subscription[]
+
+    @@index([name])
+}
+
+model Subscription {
+    id            String   @id @default(cuid())
+    userId        String
+    planId        String
+    status        String   // active, canceled, past_due, etc.
+    currentPeriodStart DateTime
+    currentPeriodEnd   DateTime
+    cancelAtPeriodEnd Boolean @default(false)
+    stripeSubscriptionId String? @unique
+    stripePriceId String?
+    interval      String   // monthly, yearly
+    createdAt     DateTime @default(now())
+    updatedAt     DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+    @@index([userId])
+    @@index([status])
+    @@index([currentPeriodEnd])
+}
+
+model Invoice {
+    id              String   @id @default(cuid())
+    userId          String
+    subscriptionId  String?
+    stripeInvoiceId String?  @unique
+    amount          Float    // Amount in dollars
+    currency        String   @default("usd")
+    status          String   // paid, open, draft, etc.
+    description     String?
+    invoiceNumber   String?
+    invoiceUrl      String?  // Stripe hosted invoice URL
+    paidAt          DateTime?
+    dueDate         DateTime?
+    createdAt       DateTime @default(now())
+    updatedAt       DateTime @updatedAt
+
+    user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([status])
+    @@index([createdAt])
+}
+
+model GeneratedAudioClip {
+    id  String @id @default(cuid())
+    userId  String
+    text    String?
+    voice String?
+    originalVoiceS3Key String?
+    s3Key String?
+    failed Boolean @default(false)
+    createdAt DateTime @default(now())
+    service String
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([createdAt])
+}
+
+model UserVoice {
+  id        String   @id @default(cuid())
+  userId    String
+  service   String   // e.g., "styletts2", "seedvc"
+  voiceType String   @default("user") // e.g., "user", "system"
+  voiceKey  String   // The key/ID of the voice in the external service
+  s3Key     String?  // S3 key where the voice file is stored
+  name      String   // Custom name for the voice
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, service, voiceKey]) // Ensure a user doesn't have duplicate voices for the same service
+  @@index([userId])
+}
+
+model GeneratedImage {
+    id        String   @id @default(cuid())
+    userId    String
+    prompt    String
+    provider  String
+    modelId   String
+    s3Key     String
+    failed    Boolean @default(false)
+    createdAt DateTime @default(now())
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([createdAt])
+}
+
+model GeneratedVideo {
+    id         String   @id @default(cuid())
+    userId     String
+    prompt     String
+    provider   String   // e.g., "fal-ai"
+    modelId    String   // e.g., "ltx-video", "kling-video"
+    mode       String   // "text-to-video" or "image-to-video"
+    resolution String?  // "720", "480", etc.
+    aspectRatio String? // "9:16", "1:1", "16:9", etc.
+    duration   Int?     // Duration in seconds
+    imageUrl String?  
+    videoUrl String?  
+    failed     Boolean  @default(false)
+    createdAt  DateTime @default(now())
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([createdAt])
+}
