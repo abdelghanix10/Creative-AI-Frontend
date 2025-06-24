@@ -2,13 +2,27 @@
 
 A modern AI-powered creative platform built with the T3 Stack that enables users to generate images, videos, speech, and sound effects using cutting-edge AI technologies.
 
-## � Live Demo
+## 🌐 Live Demo
 
 🔗 **[View Live Demo](https://creative-ai-ab.vercel.app/)**
 
 **Note**: Currently, only the Admin & Dashboard & Settings feature is fully functional in the live demo. Other AI generation features (text to image, text to speech, voice changer, text to sound effects, and video & image generation) require paid API services and are not active in the demo environment.
 
-## �🎥 Video Preview
+### 🔐 Test Accounts
+
+You can use the following test accounts to explore different user roles and subscription states:
+
+**Password for all accounts**: `Pa$$w0rd!`
+
+| Username | Role/Status | Description |
+|----------|-------------|-------------|
+| `Admin` | Administrator | Full admin access to dashboard and management features |
+| `CancelUser` | Cancelled User | User with cancelled subscription |
+| `CancelUserPeriod` | Cancelled at Period End | User with subscription cancelled at period end |
+| `UserPro` | Pro Subscriber | User with active Pro subscription |
+| `UserLite` | Lite Subscriber | User with active Lite subscription |
+
+## 🎥 Video Preview
 
 <div align="center">
    <a href="https://www.youtube.com/watch?v=nZtE_hA7aMU">
