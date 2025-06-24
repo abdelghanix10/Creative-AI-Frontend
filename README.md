@@ -2,7 +2,13 @@
 
 A modern AI-powered creative platform built with the T3 Stack that enables users to generate images, videos, speech, and sound effects using cutting-edge AI technologies.
 
-## 🎥 Video Preview
+## � Live Demo
+
+🔗 **[View Live Demo](https://creative-ai-ab.vercel.app/)**
+
+**Note**: Currently, only the Admin & Dashboard & Settings feature is fully functional in the live demo. Other AI generation features (text to image, text to speech, voice changer, text to sound effects, and video & image generation) require paid API services and are not active in the demo environment.
+
+## �🎥 Video Preview
 
 <div align="center">
    <a href="https://www.youtube.com/watch?v=nZtE_hA7aMU">
