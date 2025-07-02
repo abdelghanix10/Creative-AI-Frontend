@@ -2,6 +2,13 @@
 
 A modern AI-powered creative platform built with the T3 Stack that enables users to generate images, videos, speech, and sound effects using cutting-edge AI technologies.
 
+## Backend Projet
+
+A complete backend is available for easy interaction with all services:
+- **Frontend Repository**: [Creative-AI-Backend](https://github.com/babdellghani/Creative-AI-Backend.git)
+- **Features**: Backend for all three AI models
+- **Integration**: AI models StyleTTS2 with finetune, Seed-VC, and Make-An-Audio services
+
 ## 🌐 Live Demo
 
 🔗 **[View Live Demo](https://creative-ai-ab.vercel.app/)**
