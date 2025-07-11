@@ -23,6 +23,8 @@ export const env = createEnv({
     STRIPE_SECRET_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     FIREWORKS_API_KEY: z.string().min(1),
+    INNGEST_EVENT_KEY: z.string().optional(),
+    INNGEST_SIGNING_KEY: z.string().optional(),
   },
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
@@ -45,6 +47,8 @@ export const env = createEnv({
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     FIREWORKS_API_KEY: process.env.FIREWORKS_API_KEY,
+    INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
+    INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,

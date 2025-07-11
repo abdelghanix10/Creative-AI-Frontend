@@ -4,7 +4,9 @@ import {
   aiGenerationFunction,
   styleTTS2VoiceUploadFunction,
   seedVCVoiceUploadFunction,
+  generateImageFunction,
 } from "~/inngest/functions";
+import { env } from "~/env";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -12,5 +14,7 @@ export const { GET, POST, PUT } = serve({
     aiGenerationFunction,
     styleTTS2VoiceUploadFunction,
     seedVCVoiceUploadFunction,
+    generateImageFunction,
   ],
+  signingKey: env.INNGEST_SIGNING_KEY,
 });

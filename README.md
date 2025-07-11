@@ -352,7 +352,24 @@ Configure your AI service API keys in the environment variables. The platform su
 
 AWS S3 is used for storing generated media files. Configure your S3 bucket and credentials in the environment variables.
 
-## 🚀 Deployment
+## � Environment Variables
+
+For production deployment, make sure to set these Inngest environment variables:
+
+```env
+# Inngest Configuration (Required for Production)
+INNGEST_EVENT_KEY=your_inngest_event_key_here
+INNGEST_SIGNING_KEY=your_inngest_signing_key_here
+```
+
+**Important for Production**: 
+- The `INNGEST_EVENT_KEY` is used for authenticating with Inngest services
+- The `INNGEST_SIGNING_KEY` is required for webhook signature verification in production
+- Without these variables, Inngest will try to connect to local development server (`127.0.0.1:8288`) which will fail in production
+
+Get these keys from your [Inngest Dashboard](https://app.inngest.com/).
+
+## �🚀 Deployment
 
 ### Vercel (Recommended)
 
