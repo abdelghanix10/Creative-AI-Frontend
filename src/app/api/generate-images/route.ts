@@ -1,12 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ImageModel, experimental_generateImage as generateImage } from "ai";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import type { ImageModel } from "ai";
+import { experimental_generateImage as generateImage } from "ai";
 import { fireworks } from "@ai-sdk/fireworks";
-import { ProviderKey } from "~/lib/provider-config";
-import { GenerateImageRequest } from "~/lib/api-types";
+import type { ProviderKey } from "~/lib/provider-config";
+import type { GenerateImageRequest } from "~/lib/api-types";
 import { uploadImageToS3 } from "~/lib/s3";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 import { inngest } from "~/inngest/client";
+import { env } from "~/env";
+
+// Ensure Fireworks API key is available
+if (!env.FIREWORKS_API_KEY) {
+  console.error("FIREWORKS_API_KEY environment variable is not set");
+}
 
 /**
  * Intended to be slightly less than the maximum execution time allowed by the
@@ -25,16 +33,16 @@ interface ProviderConfig {
 
 const providerConfig: Record<ProviderKey, ProviderConfig> = {
   fireworks1: {
-    createImageModel: fireworks.image,
+    createImageModel: (modelId: string) => fireworks.image(modelId),
     dimensionFormat: "aspectRatio",
   },
   fireworks2: {
-    createImageModel: fireworks.image,
+    createImageModel: (modelId: string) => fireworks.image(modelId),
     dimensionFormat: "aspectRatio",
     supportsCustomAspectRatio: true, // Enable custom aspect ratio for fireworks2
   },
   fireworks3: {
-    createImageModel: fireworks.image,
+    createImageModel: (modelId: string) => fireworks.image(modelId),
     dimensionFormat: "aspectRatio",
   },
 };
@@ -59,6 +67,9 @@ export async function POST(req: NextRequest) {
   // Get the authenticated user
   const session = await auth();
   const userId = session?.user?.id;
+
+  // Log environment check for debugging
+  console.log(`API Key check [requestId=${requestId}]: ${env.FIREWORKS_API_KEY ? 'Present' : 'Missing'}`);
 
   try {
     if (!prompt || !provider || !modelId || !providerConfig[provider]) {
@@ -97,8 +108,8 @@ export async function POST(req: NextRequest) {
         : {
             aspectRatio:
               config.supportsCustomAspectRatio && aspectRatio
-                ? aspectRatio
-                : DEFAULT_ASPECT_RATIO,
+                ? (aspectRatio as `${number}:${number}`)
+                : (DEFAULT_ASPECT_RATIO as `${number}:${number}`),
           }),
     }).then(async ({ image, warnings }) => {
       if (warnings?.length > 0) {
