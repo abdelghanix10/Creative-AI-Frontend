@@ -17,11 +17,26 @@ function base64ToArrayBuffer(base64: string) {
 export const aiGenerationFunction = inngest.createFunction(
   {
     id: "genrate-audio-clip",
-    retries: 2,
+    retries: 3,
     throttle: {
       limit: 3,
       period: "1m",
       key: "event.data.userId",
+    },
+    onFailure: async ({ error, event }) => {
+      console.error(`[Inngest] Audio generation failed for event ${event.id}:`, error);
+      
+      // Mark the audio clip as failed in the database
+      if (event.data.audioClipId) {
+        try {
+          await db.generatedAudioClip.update({
+            where: { id: event.data.audioClipId as string },
+            data: { failed: true },
+          });
+        } catch (dbError) {
+          console.error(`[Inngest] Failed to mark audio clip as failed:`, dbError);
+        }
+      }
     },
   },
   { event: "generate.request" },
@@ -430,6 +445,15 @@ export const seedVCVoiceUploadFunction = inngest.createFunction(
       s3_key: result.s3_key,
     };
   },
+);
+
+export const testConnectionFunction = inngest.createFunction(
+  { id: "test-connection" },
+  { event: "test.connection" },
+  async ({ event }) => {
+    console.log("[Inngest] Test connection successful", event.data);
+    return { success: true, timestamp: Date.now() };
+  }
 );
 
 export const generateImageFunction = inngest.createFunction(
