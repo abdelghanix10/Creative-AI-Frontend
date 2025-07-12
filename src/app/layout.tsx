@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "~/components/guest/theme-provider";
 import { Providers } from "~/components/providers";
+import { ClientErrorHandler } from "~/components/client/error-handler";
 import { auth } from "~/server/auth";
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+        <ClientErrorHandler />
         <Providers session={session}>
           <ThemeProvider
             attribute="class"
