@@ -23,8 +23,12 @@ export const env = createEnv({
     STRIPE_SECRET_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     FIREWORKS_API_KEY: z.string().min(1),
-    INNGEST_EVENT_KEY: z.string().optional(),
-    INNGEST_SIGNING_KEY: z.string().optional(),
+    INNGEST_EVENT_KEY: process.env.NODE_ENV === "production" 
+      ? z.string().min(1, "INNGEST_EVENT_KEY is required in production")
+      : z.string().optional(),
+    INNGEST_SIGNING_KEY: process.env.NODE_ENV === "production"
+      ? z.string().min(1, "INNGEST_SIGNING_KEY is required in production") 
+      : z.string().optional(),
   },
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),

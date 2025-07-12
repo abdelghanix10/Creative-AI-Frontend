@@ -26,7 +26,9 @@ export const aiGenerationFunction = inngest.createFunction(
   },
   { event: "generate.request" },
   async ({ event, step }) => {
-    const { audioClipId } = event.data;
+    const { audioClipId } = event.data as { audioClipId: string };
+
+    console.log(`[Inngest] Starting voice generation for audioClipId: ${audioClipId}`);
 
     const audioClip = await step.run("get-clip", async () => {
       return await db.generatedAudioClip.findUniqueOrThrow({
@@ -42,14 +44,17 @@ export const aiGenerationFunction = inngest.createFunction(
       });
     });
 
+    console.log(`[Inngest] Audio clip found - Service: ${audioClip.service}, Voice: ${audioClip.voice}`);
+
     // Check if user has enough credits
-    const user = await step.run("check-credits", async () => {
+    await step.run("check-credits", async () => {
       const user = await db.user.findUnique({
         where: { id: audioClip.userId },
         select: { credits: true },
       });
 
       if (!user || user.credits < 15) {
+        console.error(`[Inngest] Insufficient credits for user ${audioClip.userId}. Credits: ${user?.credits ?? 0}`);
         throw new Error("Not enough credits");
       }
 
@@ -58,9 +63,13 @@ export const aiGenerationFunction = inngest.createFunction(
 
     const result = await step.run("call-api", async () => {
       let response: Response | null = null;
+      let apiUrl = "";
 
       if (audioClip.service === "styletts2") {
-        response = await fetch(env.STYLETTS2_API_ROUTE + "/generate", {
+        apiUrl = env.STYLETTS2_API_ROUTE + "/generate";
+        console.log(`[Inngest] Calling StyleTTS2 API: ${apiUrl}`);
+        
+        response = await fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -72,7 +81,10 @@ export const aiGenerationFunction = inngest.createFunction(
           }),
         });
       } else if (audioClip.service === "seedvc") {
-        response = await fetch(env.SEED_VC_API_ROUTE + "/convert", {
+        apiUrl = env.SEED_VC_API_ROUTE + "/convert";
+        console.log(`[Inngest] Calling SeedVC API: ${apiUrl}`);
+        
+        response = await fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -84,7 +96,10 @@ export const aiGenerationFunction = inngest.createFunction(
           }),
         });
       } else if (audioClip.service === "make-an-audio") {
-        response = await fetch(env.MAKE_AN_AUDIO_API_ROUTE + "/generate", {
+        apiUrl = env.MAKE_AN_AUDIO_API_ROUTE + "/generate";
+        console.log(`[Inngest] Calling Make-An-Audio API: ${apiUrl}`);
+        
+        response = await fetch(apiUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -97,10 +112,14 @@ export const aiGenerationFunction = inngest.createFunction(
       }
 
       if (!response) {
+        console.error(`[Inngest] No response from API for service: ${audioClip.service}`);
         throw new Error("API error: no response");
       }
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Inngest] API error ${response.status} from ${apiUrl}: ${errorText}`);
+        
         await db.generatedAudioClip.update({
           where: { id: audioClip.id },
           data: {
@@ -108,13 +127,15 @@ export const aiGenerationFunction = inngest.createFunction(
           },
         });
 
-        throw new Error("API error: " + response.statusText);
+        throw new Error(`API error: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json() as Promise<{ audio_url: string; s3_key: string }>;
+      const result = await response.json() as { audio_url: string; s3_key: string };
+      console.log(`[Inngest] API success - S3 key: ${result.s3_key}`);
+      return result;
     });
 
-    const history = await step.run("save-to-history", async () => {
+    await step.run("save-to-history", async () => {
       return await db.generatedAudioClip.update({
         where: { id: audioClip.id },
         data: {
@@ -123,7 +144,7 @@ export const aiGenerationFunction = inngest.createFunction(
       });
     });
 
-    const deductCredits = await step.run("deduct-credits", async () => {
+    await step.run("deduct-credits", async () => {
       return await db.user.update({
         where: { id: audioClip.userId },
         data: {
@@ -134,6 +155,7 @@ export const aiGenerationFunction = inngest.createFunction(
       });
     });
 
+    console.log(`[Inngest] Voice generation completed successfully for audioClipId: ${audioClipId}`);
     return { success: true };
   },
 );
